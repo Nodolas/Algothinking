@@ -1,1 +1,0 @@
-# Polymarket Statistical Trading Bot
