@@ -1351,19 +1351,18 @@ kmReset();
     'Three distinct behavioural segments. K-Means finds them automatically.',
   ];
 
-  // ── Auto-play timeline ──
+  // ── Auto-play timeline (transition + 5 s hold per state) ──
   const PHASES = [
-    { dur: 1400 }, { dur: 1000 }, { dur: 1600 }, { dur: 1800 }, { dur: 2000 }, { dur: 2000 },
+    { dur: 1200 }, // 0  fade in dots
+    { dur: 3800 }, // 1  hold raw data         → total ~5 s on state 0
+    { dur: 1000 }, // 2  rule line draws
+    { dur: 4000 }, // 3  hold manual rule       → total ~5 s on state 1
+    { dur: 1000 }, // 4  split highlight fades in
+    { dur: 4000 }, // 5  hold the problem       → total ~5 s on state 2
+    { dur: 1500 }, // 6  clusters emerge
+    { dur: 3500 }, // 7  hold true structure    → total ~5 s on state 3
   ];
-  const PLAY_CAPTIONS = [
-    '50,000 customers arrive. No categories, no tags — just numbers.',
-    'Your job: find the natural groups hiding in this data.',
-    'An analyst draws a rule: "Spend over €200 = High Value."',
-    'But it splits customers who behave the same — and bundles ones who don\'t.',
-    'The data has its own natural structure: three distinct behavioural segments.',
-    'Occasional buyers · Engaged regulars · Premium spenders. K-Means finds them automatically.',
-  ];
-  const PHASE_STATE = [0, 0, 1, 2, 3, 3];
+  const PHASE_STATE = [0, 0, 1, 1, 2, 2, 3, 3];
   const TOTAL = PHASES.reduce((s, p) => s + p.dur, 0);
 
   function getPhase(e) {
@@ -1425,19 +1424,22 @@ kmReset();
       lastPh = ph;
       selectedState = PHASE_STATE[ph];
       updateUI(selectedState);
-      setCaption(PLAY_CAPTIONS[ph]);
+      setCaption(SNAP_CAPTIONS[selectedState]);
     }
 
     let fade = 1, lineP = 0, lineA = 0, splitT = 0, clusterT = 0;
     if      (ph === 0) { fade = easeOut(phT); }
+    // ph 1: hold raw — defaults (all zero except fade=1) are correct
     else if (ph === 2) { lineP = easeOut(phT); lineA = 1; }
-    else if (ph === 3) { lineP = 1; lineA = 1; splitT = smoothstep(phT); }
-    else if (ph === 4) {
+    else if (ph === 3) { lineP = 1; lineA = 1; }
+    else if (ph === 4) { lineP = 1; lineA = 1; splitT = smoothstep(phT); }
+    else if (ph === 5) { lineP = 1; lineA = 1; splitT = 1; }
+    else if (ph === 6) {
       lineP = 1; lineA = Math.max(0, 1 - phT * 2.5);
       splitT = Math.max(0, 1 - phT * 2.5);
       clusterT = smoothstep(Math.min(1, phT * 1.4));
     }
-    else if (ph === 5) { clusterT = 1; }
+    else if (ph === 7) { clusterT = 1; }
 
     render(fade, lineP, lineA, splitT, clusterT);
     requestAnimationFrame(frame);
