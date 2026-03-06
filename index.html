@@ -617,6 +617,28 @@ body.presentation-mode #decision-tree svg {
   display: block;
 }
 
+/* ─── SLIDES 7-11: horizontal centering ─── */
+body.presentation-mode #complexity,
+body.presentation-mode #complexity-tradeoffs,
+body.presentation-mode #application,
+body.presentation-mode #onepager-section,
+body.presentation-mode #references {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-left: 36px !important;
+  padding-right: 36px !important;
+}
+body.presentation-mode #complexity > *,
+body.presentation-mode #complexity-tradeoffs > *,
+body.presentation-mode #application > *,
+body.presentation-mode #onepager-section > *,
+body.presentation-mode #references > * {
+  width: 100%;
+  max-width: 900px;
+  flex-shrink: 0;
+}
+
 /* ─── SLIDE NAV (hidden outside presentation mode) ─── */
 .slide-arrow {
   display: none;
