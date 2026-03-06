@@ -558,6 +558,28 @@ body.presentation-mode section.slide-future { transform: translateX(100%); }
 
 body.presentation-mode canvas { max-width: 100%; }
 
+body.presentation-mode #visualization {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding-top: 16px !important;
+  padding-bottom: 16px !important;
+  gap: 0;
+}
+body.presentation-mode #visualization > .card,
+body.presentation-mode #visualization > .callout { display: none; }
+body.presentation-mode #visualization .canvas-wrapper {
+  width: 100%;
+  max-width: min(100%, calc((100vh - 58px - 120px) * 860 / 440));
+  margin: 0 auto;
+}
+body.presentation-mode #visualization canvas {
+  width: 100% !important;
+  height: auto !important;
+  display: block;
+}
+
 /* ─── SLIDE NAV (hidden outside presentation mode) ─── */
 .slide-arrow {
   display: none;
@@ -854,7 +876,7 @@ body.presentation-mode #slideCounter { display: block; }
   </div>
 </section>
 
-<!-- ─── 05 · COMPLEXITY ─── -->
+<!-- ─── 04a · COMPLEXITY ─── -->
 <section id="complexity">
   <div class="sec-label"><span class="num">04</span> Complexity & Trade-offs</div>
   <h2>Fast in practice.<br/>Tricky in theory.</h2>
@@ -895,10 +917,12 @@ body.presentation-mode #slideCounter { display: block; }
       </tr>
     </tbody>
   </table>
+</section>
 
-  <hr class="fancy"/>
-
-  <h3 class="fade-up" style="margin-bottom:20px; font-size:1.4rem;">When it shines — and when it fails</h3>
+<!-- ─── 04b · TRADE-OFFS ─── -->
+<section id="complexity-tradeoffs">
+  <div class="sec-label"><span class="num">04</span> Complexity & Trade-offs</div>
+  <h2>When it shines —<br/>and when it fails.</h2>
 
   <div class="tradeoff-grid fade-up">
     <div class="tradeoff-item pro">
@@ -1492,7 +1516,7 @@ kmReset();
 const ICON_ENTER = `<polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/>`;
 const ICON_EXIT  = `<polyline points="4 14 4 20 10 20"/><polyline points="20 10 20 4 14 4"/><line x1="4" y1="20" x2="11" y2="13"/><line x1="20" y1="4" x2="13" y2="11"/>`;
 
-const SLIDE_IDS = ['hero','problem','idea','idea-math','visualization','complexity','application','onepager-section','references'];
+const SLIDE_IDS = ['hero','problem','idea','idea-math','visualization','complexity','complexity-tradeoffs','application','onepager-section','references'];
 let currentSlide = 0;
 let presentationActive = false;
 
