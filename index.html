@@ -590,6 +590,37 @@ body.presentation-mode canvas { max-width: 100%; }
 
 body.presentation-mode .slide-arrow { display: flex; }
 body.presentation-mode #slideCounter { display: block; }
+
+/* ─── PROBLEM ANIMATION CARD ─── */
+.anim-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px; overflow: hidden;
+  margin-bottom: 24px;
+  position: relative;
+}
+.anim-toolbar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--border);
+}
+.anim-label {
+  font-family: var(--mono); font-size: 10px;
+  letter-spacing: 0.15em; text-transform: uppercase; color: var(--muted);
+}
+.anim-phase {
+  font-family: var(--mono); font-size: 10px;
+  letter-spacing: 0.12em; text-transform: uppercase; color: var(--teal);
+}
+#problemCanvas { display: block; max-width: 100%; }
+.anim-footer {
+  padding: 14px 20px;
+  border-top: 1px solid var(--border);
+  font-family: var(--lora); font-size: 14px;
+  color: var(--muted); min-height: 50px;
+  display: flex; align-items: center;
+  transition: opacity 0.4s ease;
+}
 </style>
 </head>
 <body>
@@ -598,7 +629,7 @@ body.presentation-mode #slideCounter { display: block; }
 <!-- ─── SLIDE NAV ─── -->
 <button class="slide-arrow" id="slidePrevBtn" onclick="slidePrev()" disabled>&#8249;</button>
 <button class="slide-arrow" id="slideNextBtn" onclick="slideNext()">&#8250;</button>
-<div id="slideCounter">1 / 9</div>
+<div id="slideCounter">1 / 8</div>
 
 <!-- ─── NAV ─── -->
 <nav>
@@ -606,7 +637,6 @@ body.presentation-mode #slideCounter { display: block; }
   <div class="nav-links">
     <a href="#problem">Problem</a>
     <a href="#idea">The Idea</a>
-    <a href="#walkthrough">Walkthrough</a>
     <a href="#visualization">Demo</a>
     <a href="#complexity">Complexity</a>
     <a href="#application">Application</a>
@@ -631,7 +661,7 @@ body.presentation-mode #slideCounter { display: block; }
     <span class="dim">Finding Hidden Groups</span>
   </h1>
   <p class="hero-sub">
-    An unsupervised machine learning algorithm that discovers natural structure in unlabelled data — no human guidance required.
+    We have 50,000 customers and zero labels. Follow one dataset — from raw numbers to three meaningful segments — as we walk K-Means from first principles.
   </p>
   <div class="hero-meta">
     <div class="meta-item">
@@ -656,16 +686,15 @@ body.presentation-mode #slideCounter { display: block; }
 <!-- ─── 01 · THE PROBLEM ─── -->
 <section id="problem">
   <div class="sec-label"><span class="num">01</span> The Problem</div>
-  <h2>Data arrives without labels.<br/>Structure hides inside it.</h2>
+  <h2>50,000 customers.<br/>Zero labels. Three hidden groups.</h2>
 
-  <div class="card fade-up">
-    <p>
-      Imagine you're handed a spreadsheet of 50,000 customers. No categories, no tags — just numbers: purchase frequency, average spend, last login, items browsed.
-      <strong>Your job: find the natural groups.</strong>
-    </p>
-    <p>
-      You could hire an analyst to read every row and decide — but that doesn't scale. You could pick rules manually ("anyone who spends over €200 is 'high value'") — but you're imposing your assumptions on data that may tell a different story.
-    </p>
+  <div class="anim-card fade-up">
+    <div class="anim-toolbar">
+      <span class="anim-label">50,000 Customers — Purchase Frequency vs. Avg. Spend</span>
+      <span class="anim-phase" id="problemPhaseLabel"></span>
+    </div>
+    <canvas id="problemCanvas" width="880" height="340"></canvas>
+    <div class="anim-footer" id="problemCaption">50,000 customers arrive. No categories, no tags — just numbers.</div>
   </div>
 
   <div class="naive-compare fade-up">
@@ -698,10 +727,10 @@ body.presentation-mode #slideCounter { display: block; }
 
   <div class="card fade-up">
     <p>
-      The algorithm works like a city planner trying to place K emergency stations to minimise the maximum travel time for any resident. You don't know the perfect locations — so you start somewhere and improve.
+      Back to our 50,000 customers. We want to group them by <strong>purchase frequency</strong> and <strong>average spend</strong> — but we don't know the groups yet. K-Means starts by guessing K centre-points, then keeps improving until the groups stabilise.
     </p>
     <p>
-      <strong>The key insight:</strong> if you knew which points belonged to each cluster, you could immediately find the best centre (the mean). And if you knew the centres, you could immediately assign every point. K-Means alternates between these two steps until they agree.
+      <strong>The key insight:</strong> if you knew which customers belonged to each cluster, you could immediately find the best centre (their mean). And if you knew the centres, you could immediately reassign every customer. K-Means alternates these two steps until nothing changes.
     </p>
   </div>
 
@@ -733,66 +762,18 @@ body.presentation-mode #slideCounter { display: block; }
       J = Σₖ Σᵢ∈Cₖ ‖xᵢ − μₖ‖²
     </p>
     <p>
-      Where <strong>xᵢ</strong> is a data point, <strong>μₖ</strong> is the centroid of cluster k, and <strong>Cₖ</strong> is the set of all points assigned to cluster k. We want to minimise J — the algorithm does this by alternating between the two steps above, each of which is guaranteed to decrease J or leave it unchanged.
+      For our customers: <strong>xᵢ</strong> is one customer's [frequency, spend] vector, <strong>μₖ</strong> is the centroid of segment k, and <strong>Cₖ</strong> is all customers currently assigned to segment k. Each step is guaranteed to decrease J or leave it unchanged — so the algorithm always converges.
     </p>
   </div>
 </section>
 
-<!-- ─── 03 · WALKTHROUGH ─── -->
-<section id="walkthrough">
-  <div class="sec-label"><span class="num">03</span> Step-by-Step Walkthrough</div>
-  <h2>Six wines.<br/>Two clusters. Four steps.</h2>
-
-  <div class="card fade-up">
-    <p>We have six wines characterised by two features: <strong>acidity (x)</strong> and <strong>alcohol % (y)</strong>. We suspect there are K=2 natural groups — light and bold wines. Watch the algorithm discover them.</p>
-  </div>
-
-  <!-- Dataset display -->
-  <div class="wine-grid fade-up" id="wineGrid">
-    <!-- Populated by JS -->
-  </div>
-
-  <!-- Step controls -->
-  <div class="step-controls fade-up">
-    <button class="step-btn primary" onclick="prevStep()" id="prevBtn" disabled>← Back</button>
-    <button class="step-btn primary" onclick="nextStep()" id="nextBtn">Next Step →</button>
-    <button class="step-btn" onclick="resetSteps()">↺ Reset</button>
-    <span class="step-indicator" id="stepIndicator">Step 0 / 4</span>
-  </div>
-
-  <!-- Centroid display -->
-  <div class="centroid-row" id="centroidRow">
-    <div class="centroid-pill" style="background:rgba(79,172,254,0.15); border:1px solid rgba(79,172,254,0.3); color:#4facfe;">
-      C1 = (–, –)
-    </div>
-    <div class="centroid-pill" style="background:rgba(255,107,107,0.15); border:1px solid rgba(255,107,107,0.3); color:var(--rose);">
-      C2 = (–, –)
-    </div>
-  </div>
-
-  <!-- Step narrative -->
-  <div class="step-narrative fade-up" id="stepNarrative">
-    <div class="step-num">STEP 0 OF 4</div>
-    <h4>Dataset Overview</h4>
-    <p>Six wines, two dimensions: acidity (x) and alcohol % (y). We will run K-Means with K=2. No labels exist — the algorithm must discover the grouping on its own.</p>
-  </div>
-
-  <!-- Mini scatter -->
-  <div class="canvas-wrapper fade-up" style="margin-top:16px;">
-    <div class="canvas-toolbar">
-      <span>SCATTER PLOT — ACIDITY vs ALCOHOL %</span>
-    </div>
-    <canvas id="walkCanvas" width="860" height="320"></canvas>
-  </div>
-</section>
-
-<!-- ─── 04 · VISUALIZATION ─── -->
+<!-- ─── 03 · VISUALIZATION ─── -->
 <section id="visualization">
-  <div class="sec-label"><span class="num">04</span> Interactive Visualisation</div>
-  <h2>Watch K-Means<br/>converge in real time.</h2>
+  <div class="sec-label"><span class="num">03</span> Interactive Visualisation</div>
+  <h2>Watch K-Means run<br/>on our customer data.</h2>
 
   <div class="card fade-up">
-    <p>Generate a random dataset and watch the algorithm run. Each coloured point belongs to a cluster; the <strong>★ markers</strong> are the centroids shifting toward their group's centre with every iteration.</p>
+    <p>Same setup: customers plotted by frequency and spend, K=3 segments. Press <strong>Step</strong> to advance one phase at a time, or <strong>Auto-run</strong> to watch it converge. The <strong>★ markers</strong> are the segment centroids drifting toward their group's mean with every iteration.</p>
   </div>
 
   <div class="canvas-wrapper fade-up">
@@ -819,7 +800,7 @@ body.presentation-mode #slideCounter { display: block; }
 
 <!-- ─── 05 · COMPLEXITY ─── -->
 <section id="complexity">
-  <div class="sec-label"><span class="num">05</span> Complexity & Trade-offs</div>
+  <div class="sec-label"><span class="num">04</span> Complexity & Trade-offs</div>
   <h2>Fast in practice.<br/>Tricky in theory.</h2>
 
   <table class="complexity-table fade-up">
@@ -834,12 +815,12 @@ body.presentation-mode #slideCounter { display: block; }
       <tr>
         <td>Time Complexity</td>
         <td><span class="badge-pill">O(n · k · d · i)</span></td>
-        <td>n = points, k = clusters, d = dimensions, i = iterations</td>
+        <td>Our run: n=50,000 customers, k=3 segments, d=2 features, i≈12 iterations</td>
       </tr>
       <tr>
         <td>Space Complexity</td>
         <td><span class="badge-pill">O(n · k)</span></td>
-        <td>Store distance from each point to each centroid</td>
+        <td>Store each customer's distance to all 3 centroids — 150,000 values</td>
       </tr>
       <tr>
         <td>Convergence</td>
@@ -903,7 +884,7 @@ body.presentation-mode #slideCounter { display: block; }
 
 <!-- ─── 06 · COMPANY APPLICATION ─── -->
 <section id="application">
-  <div class="sec-label"><span class="num">06</span> Company Application</div>
+  <div class="sec-label"><span class="num">05</span> Company Application</div>
   <h2>Two concrete<br/>real-world uses.</h2>
 
   <div class="app-card fade-up">
@@ -943,7 +924,7 @@ body.presentation-mode #slideCounter { display: block; }
 
 <!-- ─── ONE-PAGER CHEAT SHEET ─── -->
 <section id="onepager-section">
-  <div class="sec-label"><span class="num">07</span> Reference Cheat Sheet</div>
+  <div class="sec-label"><span class="num">06</span> Reference Cheat Sheet</div>
   <h2>One-pager to keep.</h2>
 
   <div id="onepager" class="fade-up">
@@ -972,13 +953,13 @@ body.presentation-mode #slideCounter { display: block; }
         </ul>
       </div>
       <div class="onepager-cell">
-        <div class="oc-label">Mini Example (K=2)</div>
+        <div class="oc-label">Our Example (K=3, freq vs spend)</div>
         <p style="font-family:var(--mono); font-size:11px; line-height:2; color:#7aaa90;">
-          Points: A(1,2) B(2,1) C(8,8) D(9,9)<br/>
-          Init: C1=(1,2) C2=(9,9)<br/>
-          Assign: {A,B}→C1, {C,D}→C2<br/>
-          Update: C1=(1.5,1.5) C2=(8.5,8.5)<br/>
-          Re-assign: unchanged → <strong style="color:var(--teal);">converged ✓</strong>
+          Occasional: freq≈2, spend≈€90<br/>
+          Engaged: freq≈7, spend≈€215<br/>
+          Premium: freq≈5, spend≈€410<br/>
+          After convergence: 3 stable centroids<br/>
+          → <strong style="color:var(--teal);">segments locked ✓</strong>
         </p>
         <br/>
         <div class="oc-label">Objective (minimise)</div>
@@ -1018,7 +999,7 @@ body.presentation-mode #slideCounter { display: block; }
 
 <!-- ─── REFERENCES ─── -->
 <section id="references">
-  <div class="sec-label"><span class="num">08</span> Sources & Reading</div>
+  <div class="sec-label"><span class="num">07</span> Sources & Reading</div>
   <h2>Go deeper.</h2>
   <ul class="ref-list fade-up">
     <li>Lloyd, S.P. (1982). "Least Squares Quantization in PCM." <em>IEEE Transactions on Information Theory.</em></li>
@@ -1047,193 +1028,10 @@ document.querySelectorAll('.fade-up').forEach(el => observer.observe(el));
 
 
 // ──────────────────────────────────────
-//  STEP-BY-STEP WALKTHROUGH DATA
+//  MAIN K-MEANS DEMO (Section 03)
 // ──────────────────────────────────────
-const wines = [
-  { name:'A', x:1, y:2, label:'Light', color: null },
-  { name:'B', x:2, y:1, label:'Light', color: null },
-  { name:'C', x:4, y:5, label:'Light', color: null },
-  { name:'D', x:5, y:4, label:'Light', color: null },
-  { name:'E', x:8, y:8, label:'Bold',  color: null },
-  { name:'F', x:9, y:9, label:'Bold',  color: null },
-];
-
-const C1_COLOR = '#4facfe';
-const C2_COLOR = '#ff6b6b';
-
-const steps = [
-  {
-    num: '0 / 4', title: 'Dataset Overview',
-    text: 'Six wines, two dimensions: acidity (x) and alcohol % (y). We will run K-Means with K=2. No labels exist — the algorithm must discover the grouping.',
-    centroids: null,
-    assignments: [null, null, null, null, null, null],
-  },
-  {
-    num: '1 / 4', title: 'Initialise: place 2 centroids randomly',
-    text: 'We randomly assign C1=(1,2) and C2=(9,9) as starting centroids. These are poor starting points — but the algorithm will correct itself.',
-    centroids: [{x:1,y:2}, {x:9,y:9}],
-    assignments: [null, null, null, null, null, null],
-  },
-  {
-    num: '2 / 4', title: 'Assign each wine to nearest centroid',
-    text: 'A(1,2)→C1, B(2,1)→C1, C(4,5)→C1, D(5,4)→C1 — all closer to C1=(1,2). E(8,8)→C2, F(9,9)→C2 — closer to C2=(9,9). First assignment done.',
-    centroids: [{x:1,y:2}, {x:9,y:9}],
-    assignments: [0, 0, 0, 0, 1, 1],
-  },
-  {
-    num: '3 / 4', title: 'Update: move centroids to group means',
-    text: 'C1 = mean of {A,B,C,D} = ((1+2+4+5)/4, (2+1+5+4)/4) = (3, 3). C2 = mean of {E,F} = ((8+9)/2, (8+9)/2) = (8.5, 8.5). Centroids relocated.',
-    centroids: [{x:3,y:3}, {x:8.5,y:8.5}],
-    assignments: [0, 0, 0, 0, 1, 1],
-  },
-  {
-    num: '4 / 4', title: 'Re-assign — no change. Converged! ✓',
-    text: 'With C1=(3,3) and C2=(8.5,8.5): A,B,C,D still closest to C1; E,F still closest to C2. Nothing changed → algorithm terminates. Cluster 1 = light wines (serve with fish). Cluster 2 = bold wines (serve with steak).',
-    centroids: [{x:3,y:3}, {x:8.5,y:8.5}],
-    assignments: [0, 0, 0, 0, 1, 1],
-  },
-];
-
-let currentStep = 0;
-
-function renderWineGrid(step) {
-  const grid = document.getElementById('wineGrid');
-  grid.innerHTML = wines.map((w, i) => {
-    const a = step.assignments[i];
-    let bg = 'var(--surface2)';
-    let border = 'var(--border)';
-    let clusterText = '?';
-    let clusterBg = 'rgba(255,255,255,0.05)';
-    let clusterColor = 'var(--muted)';
-    if (a === 0) {
-      bg = 'rgba(79,172,254,0.08)'; border = 'rgba(79,172,254,0.4)';
-      clusterText = 'C1'; clusterBg = 'rgba(79,172,254,0.2)'; clusterColor = C1_COLOR;
-    } else if (a === 1) {
-      bg = 'rgba(255,107,107,0.08)'; border = 'rgba(255,107,107,0.4)';
-      clusterText = 'C2'; clusterBg = 'rgba(255,107,107,0.2)'; clusterColor = C2_COLOR;
-    }
-    return `<div class="wine-dot-card" style="background:${bg}; border-color:${border};">
-      <div class="wine-name" style="color:${a===0?C1_COLOR:a===1?C2_COLOR:'var(--muted)'}">${w.name}</div>
-      <div class="wine-coord">(${w.x}, ${w.y})</div>
-      <div class="wine-cluster" style="background:${clusterBg}; color:${clusterColor};">${clusterText}</div>
-    </div>`;
-  }).join('');
-}
-
-function renderCentroids(step) {
-  const row = document.getElementById('centroidRow');
-  if (!step.centroids) {
-    row.innerHTML = `
-      <div class="centroid-pill" style="background:rgba(79,172,254,0.1);border:1px solid rgba(79,172,254,0.2);color:#4facfe;">C1 = (–, –)</div>
-      <div class="centroid-pill" style="background:rgba(255,107,107,0.1);border:1px solid rgba(255,107,107,0.2);color:var(--rose);">C2 = (–, –)</div>`;
-    return;
-  }
-  const c1 = step.centroids[0], c2 = step.centroids[1];
-  row.innerHTML = `
-    <div class="centroid-pill" style="background:rgba(79,172,254,0.15);border:1px solid rgba(79,172,254,0.4);color:#4facfe;">★ C1 = (${c1.x}, ${c1.y})</div>
-    <div class="centroid-pill" style="background:rgba(255,107,107,0.15);border:1px solid rgba(255,107,107,0.4);color:var(--rose);">★ C2 = (${c2.x}, ${c2.y})</div>`;
-}
-
-function renderNarrative(step) {
-  const el = document.getElementById('stepNarrative');
-  el.innerHTML = `<div class="step-num">STEP ${step.num}</div><h4>${step.title}</h4><p>${step.text}</p>`;
-}
-
-function renderWalkCanvas(step) {
-  const canvas = document.getElementById('walkCanvas');
-  const ctx = canvas.getContext('2d');
-  const W = canvas.width, H = canvas.height;
-  ctx.clearRect(0, 0, W, H);
-
-  const PAD = 50;
-  const maxX = 10, maxY = 10;
-  const toX = v => PAD + (v / maxX) * (W - PAD * 2);
-  const toY = v => H - PAD - (v / maxY) * (H - PAD * 2);
-
-  // Grid lines
-  ctx.strokeStyle = 'rgba(255,255,255,0.05)';
-  ctx.lineWidth = 1;
-  for (let i = 0; i <= 10; i++) {
-    ctx.beginPath(); ctx.moveTo(toX(i), PAD); ctx.lineTo(toX(i), H - PAD); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(PAD, toY(i)); ctx.lineTo(W - PAD, toY(i)); ctx.stroke();
-  }
-
-  // Axis labels
-  ctx.fillStyle = '#4a5568'; ctx.font = '11px JetBrains Mono, monospace'; ctx.textAlign = 'center';
-  for (let i = 0; i <= 10; i += 2) {
-    ctx.fillText(i, toX(i), H - 18);
-    ctx.textAlign = 'right'; ctx.fillText(i, PAD - 8, toY(i) + 4); ctx.textAlign = 'center';
-  }
-  ctx.fillStyle = '#6b7f9a';
-  ctx.fillText('Acidity →', W / 2, H - 4);
-  ctx.save(); ctx.translate(14, H/2); ctx.rotate(-Math.PI/2);
-  ctx.fillText('Alcohol %', 0, 0); ctx.restore();
-
-  // Voronoi shading
-  if (step.centroids) {
-    for (let px = 0; px < W; px += 4) {
-      for (let py = 0; py < H; py += 4) {
-        const dx = (px - PAD) / (W - PAD*2) * maxX;
-        const dy = (H - PAD - py) / (H - PAD*2) * maxY;
-        const d0 = Math.hypot(dx - step.centroids[0].x, dy - step.centroids[0].y);
-        const d1 = Math.hypot(dx - step.centroids[1].x, dy - step.centroids[1].y);
-        ctx.fillStyle = d0 < d1 ? 'rgba(79,172,254,0.04)' : 'rgba(255,107,107,0.04)';
-        ctx.fillRect(px, py, 4, 4);
-      }
-    }
-  }
-
-  // Wine points
-  wines.forEach((w, i) => {
-    const a = step.assignments[i];
-    const cx = toX(w.x), cy = toY(w.y);
-    ctx.beginPath(); ctx.arc(cx, cy, 10, 0, Math.PI * 2);
-    ctx.fillStyle = a === 0 ? 'rgba(79,172,254,0.9)' : a === 1 ? 'rgba(255,107,107,0.9)' : 'rgba(255,255,255,0.3)';
-    ctx.fill();
-    ctx.strokeStyle = 'rgba(255,255,255,0.2)'; ctx.lineWidth = 1.5; ctx.stroke();
-    ctx.fillStyle = 'white'; ctx.font = 'bold 11px Syne, sans-serif'; ctx.textAlign = 'center';
-    ctx.fillText(w.name, cx, cy + 4);
-  });
-
-  // Centroids
-  if (step.centroids) {
-    step.centroids.forEach((c, k) => {
-      const cx = toX(c.x), cy = toY(c.y);
-      const color = k === 0 ? C1_COLOR : C2_COLOR;
-      ctx.beginPath(); ctx.arc(cx, cy, 14, 0, Math.PI * 2);
-      ctx.fillStyle = color + '30'; ctx.fill();
-      ctx.strokeStyle = color; ctx.lineWidth = 2.5; ctx.stroke();
-      ctx.fillStyle = color; ctx.font = 'bold 14px Syne'; ctx.textAlign = 'center';
-      ctx.fillText('★', cx, cy + 5);
-
-      ctx.fillStyle = color; ctx.font = '10px JetBrains Mono'; ctx.textAlign = 'left';
-      ctx.fillText(`C${k+1}(${c.x},${c.y})`, cx + 16, cy - 4);
-    });
-  }
-}
-
-function renderStep(idx) {
-  const step = steps[idx];
-  renderWineGrid(step);
-  renderCentroids(step);
-  renderNarrative(step);
-  renderWalkCanvas(step);
-  document.getElementById('stepIndicator').textContent = `Step ${idx} / ${steps.length - 1}`;
-  document.getElementById('prevBtn').disabled = idx === 0;
-  document.getElementById('nextBtn').disabled = idx === steps.length - 1;
-}
-
-function nextStep() { if (currentStep < steps.length - 1) { currentStep++; renderStep(currentStep); } }
-function prevStep() { if (currentStep > 0) { currentStep--; renderStep(currentStep); } }
-function resetSteps() { currentStep = 0; renderStep(0); }
-
-// Init walkthrough
-renderStep(0);
 
 
-// ──────────────────────────────────────
-//  MAIN K-MEANS DEMO (Section 04)
-// ──────────────────────────────────────
 const mainCanvas = document.getElementById('mainCanvas');
 const mCtx = mainCanvas.getContext('2d');
 const MW = mainCanvas.width, MH = mainCanvas.height;
@@ -1397,12 +1195,239 @@ kmReset();
 
 
 // ──────────────────────────────────────
+//  PROBLEM SECTION ANIMATION
+// ──────────────────────────────────────
+(function problemAnimation() {
+  const canvas = document.getElementById('problemCanvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  const PAD = { t: 28, r: 24, b: 40, l: 58 };
+
+  // ── Gaussian RNG ──
+  function rng() {
+    let u, v;
+    do { u = Math.random(); } while (!u);
+    do { v = Math.random(); } while (!v);
+    return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+  }
+
+  // ── 3 customer clusters: [freq, spend] ──
+  const DEFS = [
+    { mx: 2.1, my: 88,  sx: 0.85, sy: 32, n: 38 },  // Occasional
+    { mx: 7.5, my: 215, sx: 1.05, sy: 56, n: 42 },  // Engaged  (spans €200)
+    { mx: 4.6, my: 408, sx: 1.3,  sy: 44, n: 35 },  // Premium
+  ];
+  const C_COL   = ['#4facfe', '#00e5c0', '#c084fc'];
+  const C_NAMES = ['Occasional', 'Engaged', 'Premium'];
+  const pts = [];
+  DEFS.forEach((d, k) => {
+    for (let i = 0; i < d.n; i++) {
+      pts.push({
+        freq:  Math.max(0.2, Math.min(9.8, d.mx + rng() * d.sx)),
+        spend: Math.max(15,  Math.min(490, d.my + rng() * d.sy)),
+        k,
+      });
+    }
+  });
+  pts.sort(() => Math.random() - 0.5);
+
+  // ── Coordinate helpers ──
+  const plotW = W - PAD.l - PAD.r;
+  const plotH = H - PAD.t - PAD.b;
+  const toX = f => PAD.l + (f / 10) * plotW;
+  const toY = s => H - PAD.b - (s / 500) * plotH;
+  const THRESHOLD = 200;
+
+  // ── Color lerp ──
+  function h2r(h) { return [parseInt(h.slice(1,3),16), parseInt(h.slice(3,5),16), parseInt(h.slice(5,7),16)]; }
+  function lp(a, b, t) { return a + (b - a) * t; }
+  function dotColor(p, clusterT, splitT) {
+    const grey = [178, 198, 218];
+    if (splitT > 0 && p.k === 1) {
+      const col = h2r(p.spend >= THRESHOLD ? '#ffb830' : '#ff6b6b');
+      return `rgba(${col.map((c,i) => Math.round(lp(grey[i], c, splitT))).join(',')},0.95)`;
+    }
+    if (clusterT > 0) {
+      const col = h2r(C_COL[p.k]);
+      const a = lp(0.55, 0.88, clusterT);
+      return `rgba(${col.map((c,i) => Math.round(lp(grey[i], c, clusterT))).join(',')},${a.toFixed(2)})`;
+    }
+    return `rgba(${grey.join(',')},0.55)`;
+  }
+
+  // ── Draw helpers ──
+  function drawGrid() {
+    ctx.strokeStyle = 'rgba(255,255,255,0.035)';
+    ctx.lineWidth = 1;
+    for (let i = 0; i <= 10; i++) {
+      const x = toX(i);
+      ctx.beginPath(); ctx.moveTo(x, PAD.t); ctx.lineTo(x, H - PAD.b); ctx.stroke();
+    }
+    for (let i = 0; i <= 5; i++) {
+      const y = toY(i * 100);
+      ctx.beginPath(); ctx.moveTo(PAD.l, y); ctx.lineTo(W - PAD.r, y); ctx.stroke();
+    }
+    ctx.fillStyle = '#3d4e68';
+    ctx.font = '10px JetBrains Mono, monospace';
+    for (let i = 0; i <= 5; i++) {
+      ctx.textAlign = 'right';
+      ctx.fillText('€' + (i * 100), PAD.l - 5, toY(i * 100) + 4);
+    }
+    for (let i = 0; i <= 5; i++) {
+      ctx.textAlign = 'center';
+      ctx.fillText(i * 2, toX(i * 2), H - PAD.b + 14);
+    }
+    ctx.fillStyle = '#334055';
+    ctx.fillText('Purchase Frequency →', (PAD.l + W - PAD.r) / 2, H - 2);
+    ctx.save();
+    ctx.translate(11, PAD.t + plotH / 2);
+    ctx.rotate(-Math.PI / 2);
+    ctx.fillText('Avg. Spend →', 0, 0);
+    ctx.restore();
+  }
+
+  function drawZones(alpha) {
+    if (alpha <= 0) return;
+    const ry = toY(THRESHOLD);
+    ctx.globalAlpha = alpha * 0.08;
+    ctx.fillStyle = '#ffb830';
+    ctx.fillRect(PAD.l, PAD.t, plotW, ry - PAD.t);
+    ctx.fillStyle = '#ff6b6b';
+    ctx.fillRect(PAD.l, ry, plotW, H - PAD.b - ry);
+    ctx.globalAlpha = 1;
+  }
+
+  function drawRule(progress, alpha) {
+    if (progress <= 0 || alpha <= 0) return;
+    const ry = toY(THRESHOLD);
+    const endX = PAD.l + plotW * Math.min(1, progress);
+    ctx.globalAlpha = alpha;
+    ctx.strokeStyle = '#ffb830';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([8, 5]);
+    ctx.beginPath(); ctx.moveTo(PAD.l, ry); ctx.lineTo(endX, ry); ctx.stroke();
+    ctx.setLineDash([]);
+    if (progress >= 1) {
+      ctx.font = 'bold 10px JetBrains Mono, monospace';
+      ctx.fillStyle = '#ffb830';
+      ctx.textAlign = 'left';
+      ctx.fillText('€200 — manual "High Value" cutoff', PAD.l + 6, ry - 7);
+      ctx.font = '10px JetBrains Mono, monospace';
+      ctx.fillStyle = 'rgba(255,184,48,0.55)';
+      ctx.textAlign = 'right';
+      ctx.fillText('HIGH VALUE ↑', W - PAD.r - 4, PAD.t + 14);
+      ctx.fillStyle = 'rgba(255,107,107,0.55)';
+      ctx.fillText('LOW VALUE ↓', W - PAD.r - 4, H - PAD.b - 6);
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  function drawDots(fade, clusterT, splitT) {
+    ctx.globalAlpha = fade;
+    pts.forEach(p => {
+      ctx.beginPath();
+      ctx.arc(toX(p.freq), toY(p.spend), 4.5, 0, Math.PI * 2);
+      ctx.fillStyle = dotColor(p, clusterT, splitT);
+      ctx.fill();
+    });
+    ctx.globalAlpha = 1;
+  }
+
+  function drawLabels(alpha) {
+    if (alpha <= 0) return;
+    ctx.globalAlpha = alpha;
+    DEFS.forEach((d, k) => {
+      ctx.fillStyle = C_COL[k];
+      ctx.font = 'bold 12px Syne, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(C_NAMES[k], toX(d.mx), toY(d.my) - 18);
+    });
+    ctx.globalAlpha = 1;
+  }
+
+  // ── Phase timeline ──
+  const PHASES = [
+    { dur: 1400, label: 'LOADING DATA' },
+    { dur: 1000, label: 'RAW DATA' },
+    { dur: 1600, label: 'MANUAL RULE' },
+    { dur: 1800, label: 'THE PROBLEM' },
+    { dur: 2000, label: 'TRUE STRUCTURE' },
+    { dur: 2000, label: 'RESULT' },
+  ];
+  const CAPTIONS = [
+    '50,000 customers arrive. No categories, no tags — just numbers.',
+    'Your job: find the natural groups hiding in this data.',
+    'An analyst draws a rule: "Spend over €200 = High Value."',
+    'But it splits customers who behave the same — and bundles ones who don\'t.',
+    'The data has its own natural structure: three distinct behavioural segments.',
+    'Occasional buyers · Engaged regulars · Premium spenders. K-Means finds them automatically.',
+  ];
+  const TOTAL = PHASES.reduce((s, p) => s + p.dur, 0);
+
+  function getPhase(e) {
+    const t = e % TOTAL;
+    let cum = 0;
+    for (let i = 0; i < PHASES.length; i++) {
+      if (t < cum + PHASES[i].dur) return { ph: i, phT: (t - cum) / PHASES[i].dur };
+      cum += PHASES[i].dur;
+    }
+    return { ph: PHASES.length - 1, phT: 1 };
+  }
+
+  function easeOut(t)    { return 1 - Math.pow(1 - t, 2); }
+  function smoothstep(t) { return t * t * (3 - 2 * t); }
+
+  let t0 = null, lastPh = -1;
+  const captionEl = document.getElementById('problemCaption');
+  const phaseEl   = document.getElementById('problemPhaseLabel');
+
+  function frame(ts) {
+    if (!t0) t0 = ts;
+    const { ph, phT } = getPhase(ts - t0);
+
+    if (ph !== lastPh) {
+      lastPh = ph;
+      if (phaseEl) phaseEl.textContent = PHASES[ph].label;
+      if (captionEl) {
+        captionEl.style.opacity = 0;
+        setTimeout(() => { captionEl.textContent = CAPTIONS[ph]; captionEl.style.opacity = 1; }, 250);
+      }
+    }
+
+    // Per-phase visual params
+    let fade = 1, lineP = 0, lineA = 0, splitT = 0, clusterT = 0;
+    if      (ph === 0) { fade = easeOut(phT); }
+    else if (ph === 2) { lineP = easeOut(phT); lineA = 1; }
+    else if (ph === 3) { lineP = 1; lineA = 1; splitT = smoothstep(phT); }
+    else if (ph === 4) {
+      lineP = 1; lineA = Math.max(0, 1 - phT * 2.5);
+      splitT = Math.max(0, 1 - phT * 2.5);
+      clusterT = smoothstep(Math.min(1, phT * 1.4));
+    }
+    else if (ph === 5) { clusterT = 1; }
+
+    ctx.fillStyle = '#0f1724';
+    ctx.fillRect(0, 0, W, H);
+    drawGrid();
+    drawZones(lineA);
+    drawDots(fade, clusterT, splitT);
+    drawRule(lineP, lineA);
+    drawLabels(clusterT > 0.6 ? smoothstep((clusterT - 0.6) / 0.4) : 0);
+
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+})();
+
+
+// ──────────────────────────────────────
 //  FULLSCREEN + PRESENTATION MODE
 // ──────────────────────────────────────
 const ICON_ENTER = `<polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/>`;
 const ICON_EXIT  = `<polyline points="4 14 4 20 10 20"/><polyline points="20 10 20 4 14 4"/><line x1="4" y1="20" x2="11" y2="13"/><line x1="20" y1="4" x2="13" y2="11"/>`;
 
-const SLIDE_IDS = ['hero','problem','idea','walkthrough','visualization','complexity','application','onepager-section','references'];
+const SLIDE_IDS = ['hero','problem','idea','visualization','complexity','application','onepager-section','references'];
 let currentSlide = 0;
 let presentationActive = false;
 
