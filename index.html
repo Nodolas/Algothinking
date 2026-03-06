@@ -566,11 +566,11 @@ body.presentation-mode canvas { max-width: 100%; }
   width: 48px; height: 48px; border-radius: 50%;
   background: rgba(8,12,20,0.8);
   border: 1px solid var(--teal); color: var(--teal);
-  font-size: 26px; line-height: 1;
-  cursor: pointer;
+  cursor: pointer; padding: 0;
   align-items: center; justify-content: center;
-  transition: all 0.2s; backdrop-filter: blur(10px);
+  transition: background 0.2s, color 0.2s; backdrop-filter: blur(10px);
 }
+.slide-arrow svg { display: block; pointer-events: none; }
 .slide-arrow:hover:not(:disabled) { background: var(--teal); color: var(--bg); }
 .slide-arrow:disabled { opacity: 0.2; cursor: not-allowed; }
 #slidePrevBtn { left: 16px; }
@@ -608,10 +608,22 @@ body.presentation-mode #slideCounter { display: block; }
   font-family: var(--mono); font-size: 10px;
   letter-spacing: 0.15em; text-transform: uppercase; color: var(--muted);
 }
-.anim-phase {
-  font-family: var(--mono); font-size: 10px;
-  letter-spacing: 0.12em; text-transform: uppercase; color: var(--teal);
+.anim-controls { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.anim-state-btn {
+  padding: 5px 11px; border-radius: 6px;
+  border: 1px solid var(--border); background: transparent; color: var(--muted);
+  font-family: var(--mono); font-size: 10px; letter-spacing: 0.07em; text-transform: uppercase;
+  cursor: pointer; transition: all 0.2s; white-space: nowrap;
 }
+.anim-state-btn:hover { border-color: var(--teal); color: var(--text); }
+.anim-state-btn.active { background: var(--teal-dim); border-color: var(--teal); color: var(--teal); }
+.anim-play-btn {
+  padding: 5px 13px; border-radius: 6px;
+  border: 1px solid var(--teal); background: var(--teal-dim); color: var(--teal);
+  font-family: var(--mono); font-size: 10px; letter-spacing: 0.07em;
+  cursor: pointer; transition: all 0.2s; margin-left: 2px; white-space: nowrap;
+}
+.anim-play-btn:hover { background: var(--teal); color: var(--bg); }
 #problemCanvas { display: block; max-width: 100%; }
 .anim-footer {
   padding: 14px 20px;
@@ -627,8 +639,12 @@ body.presentation-mode #slideCounter { display: block; }
 <div class="grid-bg"></div>
 
 <!-- ─── SLIDE NAV ─── -->
-<button class="slide-arrow" id="slidePrevBtn" onclick="slidePrev()" disabled>&#8249;</button>
-<button class="slide-arrow" id="slideNextBtn" onclick="slideNext()">&#8250;</button>
+<button class="slide-arrow" id="slidePrevBtn" onclick="slidePrev()" disabled>
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+</button>
+<button class="slide-arrow" id="slideNextBtn" onclick="slideNext()">
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+</button>
 <div id="slideCounter">1 / 8</div>
 
 <!-- ─── NAV ─── -->
@@ -690,8 +706,14 @@ body.presentation-mode #slideCounter { display: block; }
 
   <div class="anim-card fade-up">
     <div class="anim-toolbar">
-      <span class="anim-label">50,000 Customers — Purchase Frequency vs. Avg. Spend</span>
-      <span class="anim-phase" id="problemPhaseLabel"></span>
+      <span class="anim-label">50,000 Customers — Frequency vs. Avg. Spend</span>
+      <div class="anim-controls">
+        <button class="anim-state-btn active" id="asbtn0" onclick="setAnimState(0)">Raw Data</button>
+        <button class="anim-state-btn" id="asbtn1" onclick="setAnimState(1)">Manual Rule</button>
+        <button class="anim-state-btn" id="asbtn2" onclick="setAnimState(2)">The Problem</button>
+        <button class="anim-state-btn" id="asbtn3" onclick="setAnimState(3)">True Structure</button>
+        <button class="anim-play-btn" id="animPlayBtn" onclick="toggleAnimPlay()">&#9654; Play</button>
+      </div>
     </div>
     <canvas id="problemCanvas" width="880" height="340"></canvas>
     <div class="anim-footer" id="problemCaption">50,000 customers arrive. No categories, no tags — just numbers.</div>
@@ -1204,7 +1226,6 @@ kmReset();
   const W = canvas.width, H = canvas.height;
   const PAD = { t: 28, r: 24, b: 40, l: 58 };
 
-  // ── Gaussian RNG ──
   function rng() {
     let u, v;
     do { u = Math.random(); } while (!u);
@@ -1212,11 +1233,10 @@ kmReset();
     return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
   }
 
-  // ── 3 customer clusters: [freq, spend] ──
   const DEFS = [
-    { mx: 2.1, my: 88,  sx: 0.85, sy: 32, n: 38 },  // Occasional
-    { mx: 7.5, my: 215, sx: 1.05, sy: 56, n: 42 },  // Engaged  (spans €200)
-    { mx: 4.6, my: 408, sx: 1.3,  sy: 44, n: 35 },  // Premium
+    { mx: 2.1, my: 88,  sx: 0.85, sy: 32, n: 38 },
+    { mx: 7.5, my: 215, sx: 1.05, sy: 56, n: 42 },
+    { mx: 4.6, my: 408, sx: 1.3,  sy: 44, n: 35 },
   ];
   const C_COL   = ['#4facfe', '#00e5c0', '#c084fc'];
   const C_NAMES = ['Occasional', 'Engaged', 'Premium'];
@@ -1232,14 +1252,12 @@ kmReset();
   });
   pts.sort(() => Math.random() - 0.5);
 
-  // ── Coordinate helpers ──
   const plotW = W - PAD.l - PAD.r;
   const plotH = H - PAD.t - PAD.b;
   const toX = f => PAD.l + (f / 10) * plotW;
   const toY = s => H - PAD.b - (s / 500) * plotH;
   const THRESHOLD = 200;
 
-  // ── Color lerp ──
   function h2r(h) { return [parseInt(h.slice(1,3),16), parseInt(h.slice(3,5),16), parseInt(h.slice(5,7),16)]; }
   function lp(a, b, t) { return a + (b - a) * t; }
   function dotColor(p, clusterT, splitT) {
@@ -1256,69 +1274,40 @@ kmReset();
     return `rgba(${grey.join(',')},0.55)`;
   }
 
-  // ── Draw helpers ──
   function drawGrid() {
-    ctx.strokeStyle = 'rgba(255,255,255,0.035)';
-    ctx.lineWidth = 1;
-    for (let i = 0; i <= 10; i++) {
-      const x = toX(i);
-      ctx.beginPath(); ctx.moveTo(x, PAD.t); ctx.lineTo(x, H - PAD.b); ctx.stroke();
-    }
-    for (let i = 0; i <= 5; i++) {
-      const y = toY(i * 100);
-      ctx.beginPath(); ctx.moveTo(PAD.l, y); ctx.lineTo(W - PAD.r, y); ctx.stroke();
-    }
-    ctx.fillStyle = '#3d4e68';
-    ctx.font = '10px JetBrains Mono, monospace';
-    for (let i = 0; i <= 5; i++) {
-      ctx.textAlign = 'right';
-      ctx.fillText('€' + (i * 100), PAD.l - 5, toY(i * 100) + 4);
-    }
-    for (let i = 0; i <= 5; i++) {
-      ctx.textAlign = 'center';
-      ctx.fillText(i * 2, toX(i * 2), H - PAD.b + 14);
-    }
+    ctx.strokeStyle = 'rgba(255,255,255,0.035)'; ctx.lineWidth = 1;
+    for (let i = 0; i <= 10; i++) { const x = toX(i); ctx.beginPath(); ctx.moveTo(x, PAD.t); ctx.lineTo(x, H - PAD.b); ctx.stroke(); }
+    for (let i = 0; i <= 5; i++)  { const y = toY(i * 100); ctx.beginPath(); ctx.moveTo(PAD.l, y); ctx.lineTo(W - PAD.r, y); ctx.stroke(); }
+    ctx.fillStyle = '#3d4e68'; ctx.font = '10px JetBrains Mono, monospace';
+    for (let i = 0; i <= 5; i++) { ctx.textAlign = 'right';  ctx.fillText('€' + (i * 100), PAD.l - 5, toY(i * 100) + 4); }
+    for (let i = 0; i <= 5; i++) { ctx.textAlign = 'center'; ctx.fillText(i * 2, toX(i * 2), H - PAD.b + 14); }
     ctx.fillStyle = '#334055';
     ctx.fillText('Purchase Frequency →', (PAD.l + W - PAD.r) / 2, H - 2);
-    ctx.save();
-    ctx.translate(11, PAD.t + plotH / 2);
-    ctx.rotate(-Math.PI / 2);
-    ctx.fillText('Avg. Spend →', 0, 0);
-    ctx.restore();
+    ctx.save(); ctx.translate(11, PAD.t + plotH / 2); ctx.rotate(-Math.PI / 2); ctx.fillText('Avg. Spend →', 0, 0); ctx.restore();
   }
 
   function drawZones(alpha) {
     if (alpha <= 0) return;
     const ry = toY(THRESHOLD);
     ctx.globalAlpha = alpha * 0.08;
-    ctx.fillStyle = '#ffb830';
-    ctx.fillRect(PAD.l, PAD.t, plotW, ry - PAD.t);
-    ctx.fillStyle = '#ff6b6b';
-    ctx.fillRect(PAD.l, ry, plotW, H - PAD.b - ry);
+    ctx.fillStyle = '#ffb830'; ctx.fillRect(PAD.l, PAD.t, plotW, ry - PAD.t);
+    ctx.fillStyle = '#ff6b6b'; ctx.fillRect(PAD.l, ry, plotW, H - PAD.b - ry);
     ctx.globalAlpha = 1;
   }
 
   function drawRule(progress, alpha) {
     if (progress <= 0 || alpha <= 0) return;
     const ry = toY(THRESHOLD);
-    const endX = PAD.l + plotW * Math.min(1, progress);
     ctx.globalAlpha = alpha;
-    ctx.strokeStyle = '#ffb830';
-    ctx.lineWidth = 2;
-    ctx.setLineDash([8, 5]);
-    ctx.beginPath(); ctx.moveTo(PAD.l, ry); ctx.lineTo(endX, ry); ctx.stroke();
+    ctx.strokeStyle = '#ffb830'; ctx.lineWidth = 2; ctx.setLineDash([8, 5]);
+    ctx.beginPath(); ctx.moveTo(PAD.l, ry); ctx.lineTo(PAD.l + plotW * Math.min(1, progress), ry); ctx.stroke();
     ctx.setLineDash([]);
     if (progress >= 1) {
-      ctx.font = 'bold 10px JetBrains Mono, monospace';
-      ctx.fillStyle = '#ffb830';
-      ctx.textAlign = 'left';
+      ctx.font = 'bold 10px JetBrains Mono, monospace'; ctx.fillStyle = '#ffb830'; ctx.textAlign = 'left';
       ctx.fillText('€200 — manual "High Value" cutoff', PAD.l + 6, ry - 7);
       ctx.font = '10px JetBrains Mono, monospace';
-      ctx.fillStyle = 'rgba(255,184,48,0.55)';
-      ctx.textAlign = 'right';
-      ctx.fillText('HIGH VALUE ↑', W - PAD.r - 4, PAD.t + 14);
-      ctx.fillStyle = 'rgba(255,107,107,0.55)';
-      ctx.fillText('LOW VALUE ↓', W - PAD.r - 4, H - PAD.b - 6);
+      ctx.fillStyle = 'rgba(255,184,48,0.55)'; ctx.textAlign = 'right'; ctx.fillText('HIGH VALUE ↑', W - PAD.r - 4, PAD.t + 14);
+      ctx.fillStyle = 'rgba(255,107,107,0.55)'; ctx.fillText('LOW VALUE ↓', W - PAD.r - 4, H - PAD.b - 6);
     }
     ctx.globalAlpha = 1;
   }
@@ -1326,10 +1315,8 @@ kmReset();
   function drawDots(fade, clusterT, splitT) {
     ctx.globalAlpha = fade;
     pts.forEach(p => {
-      ctx.beginPath();
-      ctx.arc(toX(p.freq), toY(p.spend), 4.5, 0, Math.PI * 2);
-      ctx.fillStyle = dotColor(p, clusterT, splitT);
-      ctx.fill();
+      ctx.beginPath(); ctx.arc(toX(p.freq), toY(p.spend), 4.5, 0, Math.PI * 2);
+      ctx.fillStyle = dotColor(p, clusterT, splitT); ctx.fill();
     });
     ctx.globalAlpha = 1;
   }
@@ -1338,24 +1325,37 @@ kmReset();
     if (alpha <= 0) return;
     ctx.globalAlpha = alpha;
     DEFS.forEach((d, k) => {
-      ctx.fillStyle = C_COL[k];
-      ctx.font = 'bold 12px Syne, sans-serif';
-      ctx.textAlign = 'center';
+      ctx.fillStyle = C_COL[k]; ctx.font = 'bold 12px Syne, sans-serif'; ctx.textAlign = 'center';
       ctx.fillText(C_NAMES[k], toX(d.mx), toY(d.my) - 18);
     });
     ctx.globalAlpha = 1;
   }
 
-  // ── Phase timeline ──
-  const PHASES = [
-    { dur: 1400, label: 'LOADING DATA' },
-    { dur: 1000, label: 'RAW DATA' },
-    { dur: 1600, label: 'MANUAL RULE' },
-    { dur: 1800, label: 'THE PROBLEM' },
-    { dur: 2000, label: 'TRUE STRUCTURE' },
-    { dur: 2000, label: 'RESULT' },
+  function render(fade, lineP, lineA, splitT, clusterT) {
+    ctx.fillStyle = '#0f1724'; ctx.fillRect(0, 0, W, H);
+    drawGrid(); drawZones(lineA); drawDots(fade, clusterT, splitT); drawRule(lineP, lineA);
+    drawLabels(clusterT > 0.6 ? smoothstep((clusterT - 0.6) / 0.4) : 0);
+  }
+
+  // ── Snapshots for manual selection ──
+  const SNAPSHOTS = [
+    { fade: 1, lineP: 0, lineA: 0, splitT: 0, clusterT: 0 },  // Raw Data
+    { fade: 1, lineP: 1, lineA: 1, splitT: 0, clusterT: 0 },  // Manual Rule
+    { fade: 1, lineP: 1, lineA: 1, splitT: 1, clusterT: 0 },  // The Problem
+    { fade: 1, lineP: 0, lineA: 0, splitT: 0, clusterT: 1 },  // True Structure
   ];
-  const CAPTIONS = [
+  const SNAP_CAPTIONS = [
+    '50,000 customers. No categories, no tags — just numbers.',
+    'An analyst draws a rule: "Spend over €200 = High Value."',
+    'But it splits customers who belong together — and bundles ones who don\'t.',
+    'Three distinct behavioural segments. K-Means finds them automatically.',
+  ];
+
+  // ── Auto-play timeline ──
+  const PHASES = [
+    { dur: 1400 }, { dur: 1000 }, { dur: 1600 }, { dur: 1800 }, { dur: 2000 }, { dur: 2000 },
+  ];
+  const PLAY_CAPTIONS = [
     '50,000 customers arrive. No categories, no tags — just numbers.',
     'Your job: find the natural groups hiding in this data.',
     'An analyst draws a rule: "Spend over €200 = High Value."',
@@ -1363,11 +1363,11 @@ kmReset();
     'The data has its own natural structure: three distinct behavioural segments.',
     'Occasional buyers · Engaged regulars · Premium spenders. K-Means finds them automatically.',
   ];
+  const PHASE_STATE = [0, 0, 1, 2, 3, 3];
   const TOTAL = PHASES.reduce((s, p) => s + p.dur, 0);
 
   function getPhase(e) {
-    const t = e % TOTAL;
-    let cum = 0;
+    const t = e % TOTAL; let cum = 0;
     for (let i = 0; i < PHASES.length; i++) {
       if (t < cum + PHASES[i].dur) return { ph: i, phT: (t - cum) / PHASES[i].dur };
       cum += PHASES[i].dur;
@@ -1378,24 +1378,56 @@ kmReset();
   function easeOut(t)    { return 1 - Math.pow(1 - t, 2); }
   function smoothstep(t) { return t * t * (3 - 2 * t); }
 
-  let t0 = null, lastPh = -1;
+  // ── State ──
+  let paused = true, selectedState = 0, t0 = null, lastPh = -1;
   const captionEl = document.getElementById('problemCaption');
-  const phaseEl   = document.getElementById('problemPhaseLabel');
+
+  function updateUI(activeState) {
+    for (let i = 0; i < 4; i++) {
+      const b = document.getElementById('asbtn' + i);
+      if (b) b.classList.toggle('active', i === activeState);
+    }
+    const pb = document.getElementById('animPlayBtn');
+    if (pb) pb.innerHTML = paused ? '&#9654; Play' : '&#9646;&#9646; Pause';
+  }
+
+  function setCaption(text) {
+    if (!captionEl) return;
+    captionEl.style.opacity = 0;
+    setTimeout(() => { captionEl.textContent = text; captionEl.style.opacity = 1; }, 250);
+  }
+
+  // ── Exposed globals ──
+  window.setAnimState = function(state) {
+    paused = true; selectedState = state;
+    updateUI(state);
+    setCaption(SNAP_CAPTIONS[state]);
+  };
+
+  window.toggleAnimPlay = function() {
+    paused = !paused;
+    if (!paused) { t0 = null; lastPh = -1; }
+    updateUI(selectedState);
+  };
 
   function frame(ts) {
+    if (paused) {
+      const s = SNAPSHOTS[selectedState];
+      render(s.fade, s.lineP, s.lineA, s.splitT, s.clusterT);
+      requestAnimationFrame(frame);
+      return;
+    }
+
     if (!t0) t0 = ts;
     const { ph, phT } = getPhase(ts - t0);
 
     if (ph !== lastPh) {
       lastPh = ph;
-      if (phaseEl) phaseEl.textContent = PHASES[ph].label;
-      if (captionEl) {
-        captionEl.style.opacity = 0;
-        setTimeout(() => { captionEl.textContent = CAPTIONS[ph]; captionEl.style.opacity = 1; }, 250);
-      }
+      selectedState = PHASE_STATE[ph];
+      updateUI(selectedState);
+      setCaption(PLAY_CAPTIONS[ph]);
     }
 
-    // Per-phase visual params
     let fade = 1, lineP = 0, lineA = 0, splitT = 0, clusterT = 0;
     if      (ph === 0) { fade = easeOut(phT); }
     else if (ph === 2) { lineP = easeOut(phT); lineA = 1; }
@@ -1407,16 +1439,13 @@ kmReset();
     }
     else if (ph === 5) { clusterT = 1; }
 
-    ctx.fillStyle = '#0f1724';
-    ctx.fillRect(0, 0, W, H);
-    drawGrid();
-    drawZones(lineA);
-    drawDots(fade, clusterT, splitT);
-    drawRule(lineP, lineA);
-    drawLabels(clusterT > 0.6 ? smoothstep((clusterT - 0.6) / 0.4) : 0);
-
+    render(fade, lineP, lineA, splitT, clusterT);
     requestAnimationFrame(frame);
   }
+
+  // Start paused on Raw Data
+  updateUI(0);
+  render(1, 0, 0, 0, 0);
   requestAnimationFrame(frame);
 })();
 
