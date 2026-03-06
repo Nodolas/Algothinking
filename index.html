@@ -832,6 +832,18 @@ body.presentation-mode #slideCounter { display: block; }
       <p style="font-size:13px;">Each centroid moves to the arithmetic mean of its assigned points. Repeat Assign → Update until nothing changes.</p>
     </div>
   </div>
+
+  <div class="card fade-up" style="padding: 20px; text-align: center;">
+    <p style="font-size: 12px; color: var(--muted); margin-bottom: 14px; text-transform: uppercase; letter-spacing: 0.08em;">The algorithm in motion</p>
+    <img
+      src="https://raw.githubusercontent.com/pxjdev/kmeans-animation/master/kmeans.gif"
+      alt="K-Means clustering animation: scatter of points regrouping around moving centroids"
+      style="max-width: 100%; border-radius: 10px; border: 1px solid var(--border); display: block; margin: 0 auto;"
+    />
+    <p style="font-size: 12px; color: var(--muted); margin-top: 12px;">
+      Points recolor to their nearest centroid (Assign) → centroids drift to the group mean (Relocate) → loop until nothing changes (Repeat).
+    </p>
+  </div>
 </section>
 
 <!-- ─── 02c · DECISION TREE ─── -->
@@ -840,17 +852,11 @@ body.presentation-mode #slideCounter { display: block; }
   <h2>Is K-Means the<br/>right choice here?</h2>
 
   <div class="card fade-up" style="padding: 20px 16px;">
-    <div style="aspect-ratio: 960/760; max-height: 570px; width: 100%; margin: 0 auto;">
-      <svg viewBox="0 0 960 760" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%;display:block;">
+    <div style="aspect-ratio: 960/710; max-height: 530px; width: 100%; margin: 0 auto;">
+      <svg viewBox="0 0 960 710" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%;display:block;">
         <defs>
           <marker id="dt-a" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
             <polygon points="0 0, 8 3, 0 6" fill="#4b5563"/>
-          </marker>
-          <marker id="dt-at" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
-            <polygon points="0 0, 8 3, 0 6" fill="#00e5c0"/>
-          </marker>
-          <marker id="dt-ap" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
-            <polygon points="0 0, 8 3, 0 6" fill="#f093fb"/>
           </marker>
         </defs>
 
@@ -864,16 +870,8 @@ body.presentation-mode #slideCounter { display: block; }
         <line x1="480" y1="408" x2="480" y2="457" stroke="#4b5563" stroke-width="1.5" marker-end="url(#dt-a)"/>
         <text x="492" y="438" font-size="11" fill="#86efac" font-family="Inter,sans-serif" font-weight="600">Yes</text>
 
-        <line x1="480" y1="553" x2="480" y2="598" stroke="#4b5563" stroke-width="1.5"/>
-        <text x="492" y="582" font-size="11" fill="#86efac" font-family="Inter,sans-serif" font-weight="600">Yes</text>
-
-        <!-- Fork horizontal -->
-        <line x1="300" y1="598" x2="680" y2="598" stroke="#4b5563" stroke-width="1.5"/>
-
-        <!-- Energy branch (teal) -->
-        <line x1="300" y1="598" x2="300" y2="638" stroke="#00e5c0" stroke-width="2" marker-end="url(#dt-at)"/>
-        <!-- Hospital branch (purple) -->
-        <line x1="680" y1="598" x2="680" y2="638" stroke="#f093fb" stroke-width="2" marker-end="url(#dt-ap)"/>
+        <line x1="480" y1="553" x2="480" y2="608" stroke="#4b5563" stroke-width="1.5" marker-end="url(#dt-a)"/>
+        <text x="492" y="586" font-size="11" fill="#86efac" font-family="Inter,sans-serif" font-weight="600">Yes</text>
 
         <!-- ══ NO (left) connectors ══ -->
         <line x1="350" y1="70" x2="210" y2="70" stroke="#4b5563" stroke-width="1.5" marker-end="url(#dt-a)"/>
@@ -950,28 +948,14 @@ body.presentation-mode #slideCounter { display: block; }
           <tspan x="107" dy="14">or deep clustering</tspan>
         </text>
 
-        <!-- ══ LEAF NODES ══ -->
-        <!-- L1 Energy (teal) -->
-        <rect x="175" y="638" width="250" height="90" rx="10" fill="#041e1e" stroke="#00e5c0" stroke-width="2"/>
+        <!-- ══ TERMINAL NODE ══ -->
+        <rect x="305" y="608" width="350" height="80" rx="10" fill="#041e1e" stroke="#00e5c0" stroke-width="2.5"/>
         <text text-anchor="middle" font-family="Inter,sans-serif">
-          <tspan x="300" y="660" font-size="11" font-weight="700" fill="#00e5c0">⚡ K-Means on smart meter data</tspan>
-          <tspan x="300" dy="16" font-size="10" fill="#a7f3d0">Load profiles · K ≈ 6–8 segments</tspan>
-          <tspan x="300" dy="14" font-size="10" fill="#a7f3d0">→ Personalised energy tariffs</tspan>
-        </text>
-
-        <!-- L2 Hospital (purple) -->
-        <rect x="555" y="638" width="250" height="90" rx="10" fill="#1a0a2e" stroke="#f093fb" stroke-width="2"/>
-        <text text-anchor="middle" font-family="Inter,sans-serif">
-          <tspan x="680" y="660" font-size="11" font-weight="700" fill="#f093fb">🏥 K-Means on patient records</tspan>
-          <tspan x="680" dy="16" font-size="10" fill="#fbcfe8">Clinical features · K via silhouette</tspan>
-          <tspan x="680" dy="14" font-size="10" fill="#fbcfe8">→ Risk-stratified care plans</tspan>
+          <tspan x="480" y="638" font-size="13" font-weight="700" fill="#00e5c0">✓ K-Means is your algorithm</tspan>
+          <tspan x="480" dy="20" font-size="11" fill="#a7f3d0">50,000 customers · 2 features · 3 segments</tspan>
+          <tspan x="480" dy="16" font-size="11" fill="#a7f3d0">A perfect use case for K-Means</tspan>
         </text>
       </svg>
-    </div>
-
-    <div style="display:flex;gap:24px;justify-content:center;align-items:center;margin-top:12px;font-size:12px;color:var(--muted);">
-      <span style="display:inline-flex;align-items:center;gap:6px;"><span style="display:inline-block;width:24px;height:2px;background:#00e5c0;border-radius:1px;"></span>Energy / Smart Meter Tariffs</span>
-      <span style="display:inline-flex;align-items:center;gap:6px;"><span style="display:inline-block;width:24px;height:2px;background:#f093fb;border-radius:1px;"></span>Healthcare / Patient Risk Profiles</span>
     </div>
   </div>
 </section>
