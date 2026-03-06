@@ -773,6 +773,12 @@ body.presentation-mode #slideCounter { display: block; }
       <p style="font-size:13px;">Each centroid moves to the arithmetic mean of its assigned points. Repeat Assign → Update until nothing changes.</p>
     </div>
   </div>
+</section>
+
+<!-- ─── 02b · THE MATH ─── -->
+<section id="idea-math">
+  <div class="sec-label"><span class="num">02</span> The Core Idea</div>
+  <h2>What the algorithm<br/>minimises.</h2>
 
   <div class="callout fade-up">
     <strong>What the algorithm minimises:</strong> Within-Cluster Sum of Squares (WCSS) — the total squared distance from every point to its assigned centroid. Lower WCSS = tighter, more meaningful clusters.
@@ -780,11 +786,39 @@ body.presentation-mode #slideCounter { display: block; }
 
   <div class="card fade-up">
     <h3>The mathematical objective</h3>
-    <p style="font-family: var(--mono); font-size: 15px; color: var(--teal); text-align:center; padding: 16px; background: var(--surface2); border-radius: 8px; margin: 12px 0;">
+    <p style="font-family: var(--mono); font-size: 18px; color: var(--teal); text-align:center; padding: 20px; background: var(--surface2); border-radius: 8px; margin: 12px 0 20px;">
       J = Σₖ Σᵢ∈Cₖ ‖xᵢ − μₖ‖²
     </p>
-    <p>
-      For our customers: <strong>xᵢ</strong> is one customer's [frequency, spend] vector, <strong>μₖ</strong> is the centroid of segment k, and <strong>Cₖ</strong> is all customers currently assigned to segment k. Each step is guaranteed to decrease J or leave it unchanged — so the algorithm always converges.
+
+    <div class="three-col" style="gap: 12px; margin-bottom: 16px;">
+      <div class="card" style="background: var(--surface2); border: 1px solid var(--border); padding: 16px 14px;">
+        <p style="font-family: var(--mono); font-size: 20px; color: var(--teal); margin: 0 0 6px;">J</p>
+        <p style="font-size: 12px; color: var(--muted); margin: 0;">The objective score — Within-Cluster Sum of Squares (WCSS). K-Means exists to drive this number down.</p>
+      </div>
+      <div class="card" style="background: var(--surface2); border: 1px solid var(--border); padding: 16px 14px;">
+        <p style="font-family: var(--mono); font-size: 20px; color: var(--teal); margin: 0 0 6px;">K</p>
+        <p style="font-size: 12px; color: var(--muted); margin: 0;">The number of clusters you choose. The outer sum Σₖ ranges over all K segments.</p>
+      </div>
+      <div class="card" style="background: var(--surface2); border: 1px solid var(--border); padding: 16px 14px;">
+        <p style="font-family: var(--mono); font-size: 20px; color: var(--teal); margin: 0 0 6px;">Cₖ</p>
+        <p style="font-size: 12px; color: var(--muted); margin: 0;">The set of all customers currently assigned to segment k. The inner sum Σᵢ∈Cₖ loops over every member.</p>
+      </div>
+      <div class="card" style="background: var(--surface2); border: 1px solid var(--border); padding: 16px 14px;">
+        <p style="font-family: var(--mono); font-size: 20px; color: var(--teal); margin: 0 0 6px;">xᵢ</p>
+        <p style="font-size: 12px; color: var(--muted); margin: 0;">One customer's feature vector — here [purchase frequency, average spend] — a single point in 2-D space.</p>
+      </div>
+      <div class="card" style="background: var(--surface2); border: 1px solid var(--border); padding: 16px 14px;">
+        <p style="font-family: var(--mono); font-size: 20px; color: var(--teal); margin: 0 0 6px;">μₖ</p>
+        <p style="font-size: 12px; color: var(--muted); margin: 0;">The centroid of segment k — the arithmetic mean of all xᵢ in Cₖ. This is what "Relocate" updates each round.</p>
+      </div>
+      <div class="card" style="background: var(--surface2); border: 1px solid var(--border); padding: 16px 14px;">
+        <p style="font-family: var(--mono); font-size: 20px; color: var(--teal); margin: 0 0 6px;">‖·‖²</p>
+        <p style="font-size: 12px; color: var(--muted); margin: 0;">Squared Euclidean distance from the customer to their centroid. Squaring penalises outliers more heavily.</p>
+      </div>
+    </div>
+
+    <p style="font-size: 13px; color: var(--muted);">
+      Each step is guaranteed to decrease J or leave it unchanged — so the algorithm always converges.
     </p>
   </div>
 </section>
