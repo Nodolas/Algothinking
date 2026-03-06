@@ -1071,37 +1071,41 @@ body.presentation-mode #slideCounter { display: block; }
       <tr>
         <th>Metric</th>
         <th>Value</th>
-        <th>What the variables mean</th>
+        <th>Plain English</th>
       </tr>
     </thead>
     <tbody>
       <tr>
-        <td>Time Complexity</td>
+        <td>Time complexity</td>
         <td><span class="badge-pill">O(n · k · d · i)</span></td>
-        <td>Our run: n=50,000 customers, k=3 segments, d=2 features, i≈12 iterations</td>
+        <td>Roughly proportional to <strong>points × clusters × dimensions × iterations</strong>. Our case: n = 50,000 customers, k = 3 segments, d = 2 features, i ≈ 12 iterations — almost linear in the number of customers.</td>
       </tr>
       <tr>
-        <td>Space Complexity</td>
+        <td>Space complexity</td>
         <td><span class="badge-pill">O(n · k)</span></td>
-        <td>Store each customer's distance to all 3 centroids — 150,000 values</td>
+        <td>We store each customer's distance to each centroid. 50,000 customers × 3 centroids = <strong>150,000 distances</strong> — trivial for modern hardware.</td>
       </tr>
       <tr>
         <td>Convergence</td>
-        <td><span class="badge-pill">Guaranteed finite</span></td>
-        <td>WCSS decreases or stays equal every iteration; finite states</td>
+        <td><span class="badge-pill">Guaranteed to stop</span></td>
+        <td>Every step either reduces or keeps the same total within-cluster variance (WCSS). There are only finitely many ways to assign 50,000 points to 3 clusters, so the algorithm <strong>must eventually stop</strong>.</td>
       </tr>
       <tr>
         <td>Optimality</td>
         <td><span class="badge-pill">Local minimum only</span></td>
-        <td>May miss the global optimum; run multiple times with different seeds</td>
+        <td>It can get stuck in a "good but not best" grouping. Fix: <strong>run multiple times</strong> with different random starts and keep the result with the lowest WCSS.</td>
       </tr>
       <tr>
         <td>Typical iterations</td>
-        <td><span class="badge-pill">10–100</span></td>
-        <td>Usually converges quickly in practice, despite worst-case being exponential</td>
+        <td><span class="badge-pill">~10–100</span></td>
+        <td>Worst-case is theoretically exponential, but on real customer data k-means usually <strong>settles after a few dozen passes</strong> — fast enough for production.</td>
       </tr>
     </tbody>
   </table>
+
+  <div class="callout fade-up" style="margin-top: 24px;">
+    In our 50,000-customer example, we're doing something that's almost linear in the number of customers, and we only loop ~12 times. That's why k-means is so popular in production: <strong>simple maths, very fast</strong> — but the theory behind the guarantees and optimality is surprisingly subtle.
+  </div>
 </section>
 
 <!-- ─── 04b · TRADE-OFFS ─── -->
