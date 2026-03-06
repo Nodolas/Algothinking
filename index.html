@@ -1,0 +1,1369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>K-Means Clustering — Algorithm Deep Dive</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Lora:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
+<style>
+/* ─── RESET & BASE ─── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg:       #080c14;
+  --surface:  #0f1724;
+  --surface2: #151f30;
+  --border:   rgba(99,182,255,0.12);
+  --teal:     #00e5c0;
+  --teal-dim: rgba(0,229,192,0.15);
+  --amber:    #ffb830;
+  --rose:     #ff6b6b;
+  --blue:     #4facfe;
+  --text:     #e8edf5;
+  --muted:    #6b7f9a;
+  --syne:     'Syne', sans-serif;
+  --lora:     'Lora', serif;
+  --mono:     'JetBrains Mono', monospace;
+}
+html { scroll-behavior: smooth; }
+body {
+  font-family: var(--lora);
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.7;
+  overflow-x: hidden;
+}
+
+/* ─── SCROLLBAR ─── */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--teal); border-radius: 2px; }
+
+/* ─── NOISE TEXTURE ─── */
+body::before {
+  content: '';
+  position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+  opacity: 0.6;
+}
+
+/* ─── GRID BACKGROUND ─── */
+.grid-bg {
+  position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  background-image:
+    linear-gradient(rgba(0,229,192,0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,229,192,0.025) 1px, transparent 1px);
+  background-size: 60px 60px;
+}
+
+/* ─── NAV ─── */
+nav {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 200;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 40px;
+  height: 58px;
+  background: rgba(8,12,20,0.85);
+  backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--border);
+}
+.nav-brand {
+  font-family: var(--syne);
+  font-size: 13px; font-weight: 700;
+  letter-spacing: 0.18em; text-transform: uppercase;
+  color: var(--teal);
+}
+.nav-links { display: flex; gap: 4px; }
+.nav-links a {
+  padding: 6px 14px; border-radius: 6px;
+  font-family: var(--mono); font-size: 11px;
+  color: var(--muted); text-decoration: none;
+  letter-spacing: 0.05em;
+  transition: all 0.2s;
+}
+.nav-links a:hover { color: var(--text); background: var(--surface); }
+
+/* ─── FULLSCREEN BUTTON ─── */
+.fs-btn {
+  display: flex; align-items: center; gap: 7px;
+  padding: 6px 14px; border-radius: 6px;
+  border: 1px solid var(--teal);
+  background: transparent; color: var(--teal);
+  font-family: var(--mono); font-size: 11px;
+  letter-spacing: 0.08em; cursor: pointer;
+  transition: all 0.2s; white-space: nowrap;
+  margin-left: 8px;
+}
+.fs-btn:hover { background: var(--teal); color: var(--bg); }
+.fs-btn svg { flex-shrink: 0; }
+
+/* ─── SECTION WRAPPER ─── */
+section {
+  position: relative; z-index: 1;
+  max-width: 960px; margin: 0 auto;
+  padding: 100px 40px;
+}
+section + section { padding-top: 0; }
+
+/* ─── HERO ─── */
+#hero {
+  min-height: 100vh;
+  display: flex; flex-direction: column;
+  justify-content: center;
+  padding-top: 120px;
+}
+.hero-label {
+  font-family: var(--mono);
+  font-size: 11px; letter-spacing: 0.3em; text-transform: uppercase;
+  color: var(--teal); margin-bottom: 28px;
+  display: flex; align-items: center; gap: 12px;
+}
+.hero-label::before {
+  content: '';
+  display: inline-block; width: 32px; height: 1px;
+  background: var(--teal);
+}
+h1 {
+  font-family: var(--syne);
+  font-size: clamp(3rem, 7vw, 6rem);
+  font-weight: 800; line-height: 1.05;
+  letter-spacing: -0.02em;
+  margin-bottom: 28px;
+}
+h1 .accent { color: var(--teal); }
+h1 .dim { color: var(--muted); font-weight: 400; }
+.hero-sub {
+  font-size: 18px; color: var(--muted);
+  max-width: 560px; line-height: 1.8;
+  margin-bottom: 48px;
+}
+.hero-meta {
+  display: flex; gap: 32px; flex-wrap: wrap;
+}
+.meta-item {
+  display: flex; flex-direction: column; gap: 4px;
+}
+.meta-label {
+  font-family: var(--mono); font-size: 10px;
+  letter-spacing: 0.2em; text-transform: uppercase;
+  color: var(--muted);
+}
+.meta-value {
+  font-family: var(--syne); font-size: 15px;
+  font-weight: 600; color: var(--text);
+}
+
+/* ─── SECTION HEADERS ─── */
+.sec-label {
+  font-family: var(--mono);
+  font-size: 10px; letter-spacing: 0.3em; text-transform: uppercase;
+  color: var(--teal); margin-bottom: 16px;
+  display: flex; align-items: center; gap: 10px;
+}
+.sec-label .num {
+  background: var(--teal-dim);
+  border: 1px solid var(--teal);
+  color: var(--teal);
+  padding: 2px 8px; border-radius: 4px;
+  font-size: 10px;
+}
+h2 {
+  font-family: var(--syne);
+  font-size: clamp(1.8rem, 3.5vw, 2.8rem);
+  font-weight: 700; line-height: 1.15;
+  margin-bottom: 32px; letter-spacing: -0.01em;
+}
+h3 {
+  font-family: var(--syne);
+  font-size: 1.15rem; font-weight: 700;
+  margin-bottom: 10px; color: var(--text);
+}
+
+/* ─── CARDS ─── */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 36px;
+  margin-bottom: 24px;
+  position: relative; overflow: hidden;
+}
+.card::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--teal), transparent);
+  opacity: 0.4;
+}
+.card p { color: #a8b8cc; line-height: 1.85; margin-bottom: 14px; }
+.card p:last-child { margin-bottom: 0; }
+.card p strong { color: var(--text); font-style: normal; }
+
+/* ─── GRID LAYOUTS ─── */
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.three-col { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+
+/* ─── HIGHLIGHT CALLOUT ─── */
+.callout {
+  border-left: 3px solid var(--teal);
+  background: var(--teal-dim);
+  border-radius: 0 10px 10px 0;
+  padding: 20px 24px;
+  margin: 24px 0;
+  font-size: 15px; color: #a8e8d8; line-height: 1.75;
+}
+.callout strong { color: var(--teal); }
+
+.callout-amber {
+  border-left-color: var(--amber);
+  background: rgba(255,184,48,0.08);
+  color: #e8d4a0;
+}
+.callout-amber strong { color: var(--amber); }
+
+.callout-rose {
+  border-left-color: var(--rose);
+  background: rgba(255,107,107,0.08);
+  color: #e8b0b0;
+}
+.callout-rose strong { color: var(--rose); }
+
+/* ─── PROBLEM SECTION ─── */
+.naive-compare {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
+  margin-top: 24px;
+}
+.compare-box {
+  border-radius: 12px; padding: 24px;
+  border: 1px solid var(--border);
+}
+.compare-box.bad { background: rgba(255,107,107,0.06); border-color: rgba(255,107,107,0.2); }
+.compare-box.good { background: rgba(0,229,192,0.06); border-color: rgba(0,229,192,0.2); }
+.compare-box .badge {
+  font-family: var(--mono); font-size: 10px;
+  letter-spacing: 0.15em; text-transform: uppercase;
+  padding: 3px 10px; border-radius: 20px; margin-bottom: 14px;
+  display: inline-block;
+}
+.bad .badge { background: rgba(255,107,107,0.15); color: var(--rose); }
+.good .badge { background: rgba(0,229,192,0.12); color: var(--teal); }
+.compare-box h3 { font-size: 1rem; }
+.compare-box p { font-size: 14px; color: var(--muted); margin-top: 8px; margin-bottom: 0; }
+
+/* ─── STEP-BY-STEP ─── */
+.step-controls {
+  display: flex; align-items: center; gap: 16px; margin-bottom: 28px; flex-wrap: wrap;
+}
+.step-btn {
+  padding: 10px 22px; border-radius: 8px;
+  border: 1px solid var(--teal);
+  background: transparent; color: var(--teal);
+  font-family: var(--mono); font-size: 12px;
+  cursor: pointer; transition: all 0.2s; letter-spacing: 0.05em;
+}
+.step-btn:hover, .step-btn.active { background: var(--teal); color: var(--bg); }
+.step-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+.step-btn.primary { background: var(--teal); color: var(--bg); font-weight: 600; }
+.step-btn.primary:hover { opacity: 0.85; }
+
+.step-indicator {
+  font-family: var(--mono); font-size: 12px;
+  color: var(--muted); letter-spacing: 0.1em;
+}
+
+/* Wine walkthrough table */
+.wine-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 8px; margin: 20px 0;
+}
+.wine-dot-card {
+  background: var(--surface2);
+  border: 2px solid var(--border);
+  border-radius: 10px; padding: 14px 8px;
+  text-align: center;
+  transition: all 0.4s ease;
+}
+.wine-dot-card .wine-name {
+  font-family: var(--syne); font-size: 18px; font-weight: 700;
+  margin-bottom: 4px;
+}
+.wine-dot-card .wine-coord {
+  font-family: var(--mono); font-size: 10px; color: var(--muted);
+  margin-bottom: 6px;
+}
+.wine-dot-card .wine-cluster {
+  font-family: var(--mono); font-size: 9px;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  padding: 3px 6px; border-radius: 10px;
+  transition: all 0.4s;
+}
+
+/* Step narrative */
+.step-narrative {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 12px; padding: 24px 28px;
+  margin: 20px 0;
+  min-height: 90px;
+  transition: all 0.3s;
+}
+.step-narrative .step-num {
+  font-family: var(--mono); font-size: 10px;
+  letter-spacing: 0.2em; text-transform: uppercase;
+  color: var(--teal); margin-bottom: 8px;
+}
+.step-narrative h4 {
+  font-family: var(--syne); font-size: 1rem; font-weight: 700;
+  margin-bottom: 8px;
+}
+.step-narrative p { font-size: 14px; color: #8899aa; margin: 0; line-height: 1.7; }
+
+/* Centroid display */
+.centroid-row {
+  display: flex; gap: 12px; margin: 16px 0; flex-wrap: wrap;
+}
+.centroid-pill {
+  padding: 8px 16px; border-radius: 20px;
+  font-family: var(--mono); font-size: 12px;
+  transition: all 0.4s;
+}
+
+/* ─── CANVAS SECTION ─── */
+.canvas-wrapper {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px; overflow: hidden;
+}
+.canvas-toolbar {
+  display: flex; align-items: center; gap: 12px;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+.canvas-toolbar span {
+  font-family: var(--mono); font-size: 11px;
+  color: var(--muted); letter-spacing: 0.1em;
+}
+canvas { display: block; max-width: 100%; }
+.canvas-legend {
+  display: flex; gap: 20px; padding: 14px 20px;
+  border-top: 1px solid var(--border); flex-wrap: wrap;
+}
+.legend-item {
+  display: flex; align-items: center; gap: 7px;
+  font-family: var(--mono); font-size: 11px; color: var(--muted);
+}
+.legend-dot {
+  width: 10px; height: 10px; border-radius: 50%;
+}
+.legend-star {
+  width: 12px; height: 12px; display: flex; align-items: center; justify-content: center;
+  font-size: 10px;
+}
+
+/* ─── COMPLEXITY TABLE ─── */
+.complexity-table {
+  width: 100%; border-collapse: collapse;
+  font-family: var(--mono); font-size: 13px;
+  margin: 20px 0;
+}
+.complexity-table th {
+  text-align: left; padding: 12px 16px;
+  background: var(--surface2);
+  color: var(--teal); font-size: 10px;
+  letter-spacing: 0.15em; text-transform: uppercase;
+  border-bottom: 1px solid var(--border);
+}
+.complexity-table td {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+  color: var(--muted); vertical-align: top;
+}
+.complexity-table td:first-child { color: var(--text); font-weight: 500; }
+.complexity-table tr:last-child td { border-bottom: none; }
+.complexity-table tr:hover td { background: rgba(255,255,255,0.02); }
+
+.badge-pill {
+  display: inline-block;
+  padding: 3px 10px; border-radius: 20px;
+  font-size: 11px; font-family: var(--mono);
+  background: var(--surface2); color: var(--teal);
+  border: 1px solid var(--border);
+}
+
+/* ─── TRADEOFFS ─── */
+.tradeoff-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
+  margin-top: 24px;
+}
+.tradeoff-item {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px; padding: 20px 22px;
+}
+.tradeoff-item .ti-icon { font-size: 24px; margin-bottom: 10px; }
+.tradeoff-item h4 { font-family: var(--syne); font-size: 0.95rem; font-weight: 700; margin-bottom: 6px; }
+.tradeoff-item p { font-size: 13px; color: var(--muted); margin: 0; line-height: 1.6; }
+.tradeoff-item.pro { border-top: 2px solid var(--teal); }
+.tradeoff-item.con { border-top: 2px solid var(--rose); }
+
+/* ─── COMPANY APPLICATION ─── */
+.app-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px; padding: 36px;
+  margin-bottom: 20px;
+  position: relative; overflow: hidden;
+}
+.app-card .app-num {
+  position: absolute; top: 28px; right: 32px;
+  font-family: var(--syne); font-size: 60px; font-weight: 800;
+  color: rgba(255,255,255,0.03); line-height: 1;
+  pointer-events: none;
+}
+.app-card h3 { font-size: 1.2rem; margin-bottom: 6px; }
+.app-card .app-label {
+  font-family: var(--mono); font-size: 10px;
+  letter-spacing: 0.2em; text-transform: uppercase;
+  color: var(--teal); margin-bottom: 16px;
+}
+.app-card p { font-size: 15px; color: #8899aa; line-height: 1.8; margin-bottom: 14px; }
+.spec-box {
+  background: var(--surface2); border-radius: 10px;
+  padding: 16px 20px; margin-top: 16px;
+  border-left: 3px solid var(--amber);
+}
+.spec-box p { font-size: 13px; color: #c0aa70; margin: 0; font-style: italic; }
+
+/* ─── ONE-PAGER ─── */
+#onepager {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 20px; overflow: hidden;
+  margin-top: 48px;
+}
+.onepager-header {
+  background: linear-gradient(135deg, var(--surface2), #0d2030);
+  padding: 32px 40px;
+  border-bottom: 1px solid var(--border);
+  display: flex; justify-content: space-between; align-items: center;
+}
+.onepager-header h3 {
+  font-family: var(--syne); font-size: 0.9rem;
+  letter-spacing: 0.15em; text-transform: uppercase;
+  color: var(--teal); margin-bottom: 4px;
+}
+.onepager-header p { font-size: 22px; font-family: var(--syne); font-weight: 800; margin: 0; }
+.onepager-grid {
+  display: grid; grid-template-columns: 1fr 1fr 1fr;
+  border-top: 1px solid var(--border);
+}
+.onepager-cell {
+  padding: 24px 28px;
+  border-right: 1px solid var(--border);
+}
+.onepager-cell:last-child { border-right: none; }
+.onepager-cell .oc-label {
+  font-family: var(--mono); font-size: 9px;
+  letter-spacing: 0.2em; text-transform: uppercase;
+  color: var(--teal); margin-bottom: 12px;
+}
+.onepager-cell p { font-size: 13px; color: var(--muted); line-height: 1.7; margin: 0; }
+.onepager-cell ul { list-style: none; }
+.onepager-cell ul li {
+  font-size: 12px; color: var(--muted);
+  padding: 4px 0; border-bottom: 1px solid var(--border);
+  font-family: var(--mono);
+  display: flex; gap: 8px;
+}
+.onepager-cell ul li::before { content: '→'; color: var(--teal); }
+
+/* ─── FOOTER ─── */
+footer {
+  position: relative; z-index: 1;
+  text-align: center; padding: 48px 40px;
+  border-top: 1px solid var(--border);
+  font-family: var(--mono); font-size: 11px;
+  color: var(--muted); letter-spacing: 0.1em;
+}
+footer a { color: var(--teal); text-decoration: none; }
+
+/* ─── GLOW BLOB ─── */
+.glow-blob {
+  position: absolute; pointer-events: none;
+  border-radius: 50%; filter: blur(80px);
+  opacity: 0.08;
+}
+
+/* ─── DIVIDER ─── */
+hr.fancy {
+  border: none; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--border), transparent);
+  margin: 48px 0;
+}
+
+/* ─── REFERENCES ─── */
+.ref-list { list-style: none; }
+.ref-list li {
+  padding: 12px 0; border-bottom: 1px solid var(--border);
+  font-size: 14px; color: var(--muted);
+  display: flex; gap: 12px; align-items: flex-start;
+}
+.ref-list li::before {
+  content: '—'; color: var(--teal); flex-shrink: 0;
+}
+.ref-list a { color: var(--teal); text-decoration: none; }
+.ref-list a:hover { text-decoration: underline; }
+
+/* ─── SCROLL ANIMATIONS ─── */
+.fade-up {
+  opacity: 0; transform: translateY(30px);
+  transition: opacity 0.6s ease, transform 0.6s ease;
+}
+.fade-up.visible { opacity: 1; transform: translateY(0); }
+
+@media (max-width: 700px) {
+  section { padding: 70px 20px; }
+  .two-col, .three-col, .naive-compare, .tradeoff-grid { grid-template-columns: 1fr; }
+  .onepager-grid { grid-template-columns: 1fr; }
+  .wine-grid { grid-template-columns: repeat(3, 1fr); }
+  nav { padding: 0 16px; }
+  .nav-links { display: none; }
+}
+</style>
+</head>
+<body>
+<div class="grid-bg"></div>
+
+<!-- ─── NAV ─── -->
+<nav>
+  <div class="nav-brand">K-Means Clustering</div>
+  <div class="nav-links">
+    <a href="#problem">Problem</a>
+    <a href="#idea">The Idea</a>
+    <a href="#walkthrough">Walkthrough</a>
+    <a href="#visualization">Demo</a>
+    <a href="#complexity">Complexity</a>
+    <a href="#application">Application</a>
+    <a href="#onepager">Cheat Sheet</a>
+  </div>
+  <button class="fs-btn" id="fsBtn" onclick="toggleFullscreen()" title="Toggle fullscreen (F)">
+    <svg id="fsIcon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/>
+      <line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/>
+    </svg>
+    <span id="fsLabel">Fullscreen</span>
+  </button>
+</nav>
+
+<!-- ─── HERO ─── -->
+<section id="hero">
+  <div class="glow-blob" style="width:600px;height:600px;background:var(--teal);top:-200px;right:-200px;"></div>
+  <div class="hero-label">Algorithm Deep Dive · Student Presentation</div>
+  <h1>
+    K-Means<br/>
+    <span class="accent">Clustering</span><br/>
+    <span class="dim">Finding Hidden Groups</span>
+  </h1>
+  <p class="hero-sub">
+    An unsupervised machine learning algorithm that discovers natural structure in unlabelled data — no human guidance required.
+  </p>
+  <div class="hero-meta">
+    <div class="meta-item">
+      <span class="meta-label">Algorithm Type</span>
+      <span class="meta-value">Unsupervised ML</span>
+    </div>
+    <div class="meta-item">
+      <span class="meta-label">Time Complexity</span>
+      <span class="meta-value">O(n · k · d · i)</span>
+    </div>
+    <div class="meta-item">
+      <span class="meta-label">Proposed by</span>
+      <span class="meta-value">Lloyd, 1957</span>
+    </div>
+    <div class="meta-item">
+      <span class="meta-label">Core Paradigm</span>
+      <span class="meta-value">Iterative Optimisation</span>
+    </div>
+  </div>
+</section>
+
+<!-- ─── 01 · THE PROBLEM ─── -->
+<section id="problem">
+  <div class="sec-label"><span class="num">01</span> The Problem</div>
+  <h2>Data arrives without labels.<br/>Structure hides inside it.</h2>
+
+  <div class="card fade-up">
+    <p>
+      Imagine you're handed a spreadsheet of 50,000 customers. No categories, no tags — just numbers: purchase frequency, average spend, last login, items browsed.
+      <strong>Your job: find the natural groups.</strong>
+    </p>
+    <p>
+      You could hire an analyst to read every row and decide — but that doesn't scale. You could pick rules manually ("anyone who spends over €200 is 'high value'") — but you're imposing your assumptions on data that may tell a different story.
+    </p>
+  </div>
+
+  <div class="naive-compare fade-up">
+    <div class="compare-box bad">
+      <div class="badge">❌ Naive Approach</div>
+      <h3>Manual rule-setting</h3>
+      <p>A human defines categories up front. Works for 100 rows. Completely breaks at 100,000. Misses patterns that weren't anticipated. Requires domain expertise for every dataset.</p>
+    </div>
+    <div class="compare-box good">
+      <div class="badge">✓ K-Means</div>
+      <h3>Let the data speak</h3>
+      <p>The algorithm finds natural groupings mathematically. Scales to millions of points. Discovers unexpected patterns. Runs in minutes on any modern machine.</p>
+    </div>
+  </div>
+
+  <div class="callout fade-up">
+    <strong>The core question K-Means answers:</strong> Given N unlabelled data points and a number K, what are the K most natural groupings — and which group does each point belong to?
+  </div>
+
+  <div class="card fade-up">
+    <h3>Why can't we just measure all pairwise distances?</h3>
+    <p>For N=10,000 points, brute-force pairwise comparison means <strong>50 million distance calculations</strong> — just to find the most similar pair. K-Means solves this in O(N·K) per iteration, which is dramatically cheaper. The trade-off: we must choose K in advance and accept a local (not always global) optimum.</p>
+  </div>
+</section>
+
+<!-- ─── 02 · THE IDEA ─── -->
+<section id="idea">
+  <div class="sec-label"><span class="num">02</span> The Core Idea</div>
+  <h2>Three words:<br/>Assign. Relocate. Repeat.</h2>
+
+  <div class="card fade-up">
+    <p>
+      The algorithm works like a city planner trying to place K emergency stations to minimise the maximum travel time for any resident. You don't know the perfect locations — so you start somewhere and improve.
+    </p>
+    <p>
+      <strong>The key insight:</strong> if you knew which points belonged to each cluster, you could immediately find the best centre (the mean). And if you knew the centres, you could immediately assign every point. K-Means alternates between these two steps until they agree.
+    </p>
+  </div>
+
+  <div class="three-col fade-up">
+    <div class="card" style="text-align:center; padding: 28px 20px;">
+      <div style="font-size:36px; margin-bottom:12px;">📍</div>
+      <h3>Initialise</h3>
+      <p style="font-size:13px;">Place K centroids at random positions in the data space. Bad starting points are fine — we'll fix them.</p>
+    </div>
+    <div class="card" style="text-align:center; padding: 28px 20px;">
+      <div style="font-size:36px; margin-bottom:12px;">🔗</div>
+      <h3>Assign</h3>
+      <p style="font-size:13px;">Each data point joins the cluster whose centroid is nearest (Euclidean distance). No point is left unassigned.</p>
+    </div>
+    <div class="card" style="text-align:center; padding: 28px 20px;">
+      <div style="font-size:36px; margin-bottom:12px;">🎯</div>
+      <h3>Update</h3>
+      <p style="font-size:13px;">Each centroid moves to the arithmetic mean of its assigned points. Repeat Assign → Update until nothing changes.</p>
+    </div>
+  </div>
+
+  <div class="callout fade-up">
+    <strong>What the algorithm minimises:</strong> Within-Cluster Sum of Squares (WCSS) — the total squared distance from every point to its assigned centroid. Lower WCSS = tighter, more meaningful clusters.
+  </div>
+
+  <div class="card fade-up">
+    <h3>The mathematical objective</h3>
+    <p style="font-family: var(--mono); font-size: 15px; color: var(--teal); text-align:center; padding: 16px; background: var(--surface2); border-radius: 8px; margin: 12px 0;">
+      J = Σₖ Σᵢ∈Cₖ ‖xᵢ − μₖ‖²
+    </p>
+    <p>
+      Where <strong>xᵢ</strong> is a data point, <strong>μₖ</strong> is the centroid of cluster k, and <strong>Cₖ</strong> is the set of all points assigned to cluster k. We want to minimise J — the algorithm does this by alternating between the two steps above, each of which is guaranteed to decrease J or leave it unchanged.
+    </p>
+  </div>
+</section>
+
+<!-- ─── 03 · WALKTHROUGH ─── -->
+<section id="walkthrough">
+  <div class="sec-label"><span class="num">03</span> Step-by-Step Walkthrough</div>
+  <h2>Six wines.<br/>Two clusters. Four steps.</h2>
+
+  <div class="card fade-up">
+    <p>We have six wines characterised by two features: <strong>acidity (x)</strong> and <strong>alcohol % (y)</strong>. We suspect there are K=2 natural groups — light and bold wines. Watch the algorithm discover them.</p>
+  </div>
+
+  <!-- Dataset display -->
+  <div class="wine-grid fade-up" id="wineGrid">
+    <!-- Populated by JS -->
+  </div>
+
+  <!-- Step controls -->
+  <div class="step-controls fade-up">
+    <button class="step-btn primary" onclick="prevStep()" id="prevBtn" disabled>← Back</button>
+    <button class="step-btn primary" onclick="nextStep()" id="nextBtn">Next Step →</button>
+    <button class="step-btn" onclick="resetSteps()">↺ Reset</button>
+    <span class="step-indicator" id="stepIndicator">Step 0 / 4</span>
+  </div>
+
+  <!-- Centroid display -->
+  <div class="centroid-row" id="centroidRow">
+    <div class="centroid-pill" style="background:rgba(79,172,254,0.15); border:1px solid rgba(79,172,254,0.3); color:#4facfe;">
+      C1 = (–, –)
+    </div>
+    <div class="centroid-pill" style="background:rgba(255,107,107,0.15); border:1px solid rgba(255,107,107,0.3); color:var(--rose);">
+      C2 = (–, –)
+    </div>
+  </div>
+
+  <!-- Step narrative -->
+  <div class="step-narrative fade-up" id="stepNarrative">
+    <div class="step-num">STEP 0 OF 4</div>
+    <h4>Dataset Overview</h4>
+    <p>Six wines, two dimensions: acidity (x) and alcohol % (y). We will run K-Means with K=2. No labels exist — the algorithm must discover the grouping on its own.</p>
+  </div>
+
+  <!-- Mini scatter -->
+  <div class="canvas-wrapper fade-up" style="margin-top:16px;">
+    <div class="canvas-toolbar">
+      <span>SCATTER PLOT — ACIDITY vs ALCOHOL %</span>
+    </div>
+    <canvas id="walkCanvas" width="860" height="320"></canvas>
+  </div>
+</section>
+
+<!-- ─── 04 · VISUALIZATION ─── -->
+<section id="visualization">
+  <div class="sec-label"><span class="num">04</span> Interactive Visualisation</div>
+  <h2>Watch K-Means<br/>converge in real time.</h2>
+
+  <div class="card fade-up">
+    <p>Generate a random dataset and watch the algorithm run. Each coloured point belongs to a cluster; the <strong>★ markers</strong> are the centroids shifting toward their group's centre with every iteration.</p>
+  </div>
+
+  <div class="canvas-wrapper fade-up">
+    <div class="canvas-toolbar">
+      <button class="step-btn primary" onclick="kmStep()" id="kmStepBtn">Step →</button>
+      <button class="step-btn" onclick="kmAuto()" id="kmAutoBtn">Auto-run ▶</button>
+      <button class="step-btn" onclick="kmReset()">↺ New Dataset</button>
+      <span id="kmStatusText" style="margin-left:8px;">Press Step or Auto-run to begin</span>
+    </div>
+    <canvas id="mainCanvas" width="860" height="440"></canvas>
+    <div class="canvas-legend">
+      <div class="legend-item"><div class="legend-dot" style="background:#4facfe;"></div>Cluster 1</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#f093fb;"></div>Cluster 2</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#00e5c0;"></div>Cluster 3</div>
+      <div class="legend-item"><div class="legend-star">★</div>Centroid</div>
+      <div class="legend-item"><div class="legend-dot" style="background:rgba(255,255,255,0.2);"></div>Unassigned</div>
+    </div>
+  </div>
+
+  <div class="callout fade-up" style="margin-top:24px;">
+    <strong>What you're watching:</strong> In each "Assign" step, every point is recoloured to match its nearest centroid. In each "Move" step, the ★ centroids slide to the mean position of their cluster. Convergence happens when no point changes colour.
+  </div>
+</section>
+
+<!-- ─── 05 · COMPLEXITY ─── -->
+<section id="complexity">
+  <div class="sec-label"><span class="num">05</span> Complexity & Trade-offs</div>
+  <h2>Fast in practice.<br/>Tricky in theory.</h2>
+
+  <table class="complexity-table fade-up">
+    <thead>
+      <tr>
+        <th>Metric</th>
+        <th>Value</th>
+        <th>What the variables mean</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Time Complexity</td>
+        <td><span class="badge-pill">O(n · k · d · i)</span></td>
+        <td>n = points, k = clusters, d = dimensions, i = iterations</td>
+      </tr>
+      <tr>
+        <td>Space Complexity</td>
+        <td><span class="badge-pill">O(n · k)</span></td>
+        <td>Store distance from each point to each centroid</td>
+      </tr>
+      <tr>
+        <td>Convergence</td>
+        <td><span class="badge-pill">Guaranteed finite</span></td>
+        <td>WCSS decreases or stays equal every iteration; finite states</td>
+      </tr>
+      <tr>
+        <td>Optimality</td>
+        <td><span class="badge-pill">Local minimum only</span></td>
+        <td>May miss the global optimum; run multiple times with different seeds</td>
+      </tr>
+      <tr>
+        <td>Typical iterations</td>
+        <td><span class="badge-pill">10–100</span></td>
+        <td>Usually converges quickly in practice, despite worst-case being exponential</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <hr class="fancy"/>
+
+  <h3 class="fade-up" style="margin-bottom:20px; font-size:1.4rem;">When it shines — and when it fails</h3>
+
+  <div class="tradeoff-grid fade-up">
+    <div class="tradeoff-item pro">
+      <div class="ti-icon">⚡</div>
+      <h4>Strength: Scales well</h4>
+      <p>Linear in the number of points per iteration. Handles millions of data points efficiently with mini-batch variants.</p>
+    </div>
+    <div class="tradeoff-item pro">
+      <div class="ti-icon">🔍</div>
+      <h4>Strength: Easy to interpret</h4>
+      <p>Each cluster has a centroid you can describe in plain language. Results are immediately actionable without specialist knowledge.</p>
+    </div>
+    <div class="tradeoff-item con">
+      <div class="ti-icon">🎲</div>
+      <h4>Weakness: K must be chosen</h4>
+      <p>You decide K up front. Use the Elbow Method (plot WCSS vs K) or Silhouette Score to find a good K empirically.</p>
+    </div>
+    <div class="tradeoff-item con">
+      <div class="ti-icon">🔵</div>
+      <h4>Weakness: Assumes round clusters</h4>
+      <p>K-Means uses distance to assign points, so it assumes roughly spherical, similarly-sized clusters. Fails on crescents or rings.</p>
+    </div>
+    <div class="tradeoff-item con">
+      <div class="ti-icon">💥</div>
+      <h4>Weakness: Sensitive to outliers</h4>
+      <p>A single extreme outlier pulls its centroid far from the true cluster mean. Consider K-Medoids (PAM) for robust alternatives.</p>
+    </div>
+    <div class="tradeoff-item pro">
+      <div class="ti-icon">🔧</div>
+      <h4>Fix: K-Means++</h4>
+      <p>Smart initialisation picks starting centroids far apart, dramatically reducing bad convergence and cutting required iterations.</p>
+    </div>
+  </div>
+
+  <div class="callout callout-amber fade-up" style="margin-top:28px;">
+    <strong>Elbow Method — choosing K:</strong> Run K-Means for K=1,2,3,...,10. Plot WCSS against K. The "elbow" — where adding another cluster stops meaningfully reducing WCSS — is your best K.
+  </div>
+</section>
+
+<!-- ─── 06 · COMPANY APPLICATION ─── -->
+<section id="application">
+  <div class="sec-label"><span class="num">06</span> Company Application</div>
+  <h2>Two concrete<br/>real-world uses.</h2>
+
+  <div class="app-card fade-up">
+    <div class="app-num">01</div>
+    <div class="app-label">Application · Customer Intelligence</div>
+    <h3>Behavioural Customer Segmentation for Personalised Marketing</h3>
+    <p>
+      An e-commerce company holds transaction data for 200,000 customers: purchase frequency, average order value, product category mix, days since last purchase, and session duration. Currently all customers receive the same weekly newsletter — conversion rate: 1.8%.
+    </p>
+    <p>
+      Applying K-Means (K=5) to this data discovers distinct segments: <em>frequent high-spenders</em>, <em>seasonal buyers</em>, <em>lapsed customers</em>, <em>price-sensitive deal-hunters</em>, and <em>new experimenters</em>. Each segment receives targeted messaging: lapsed customers get win-back offers; deal-hunters get early sale access; high-spenders get loyalty perks.
+    </p>
+    <div class="spec-box">
+      <p>
+        Specific implementation: cluster on normalised (z-scored) features [recency, frequency, monetary, category_entropy]. Run K-Means++ with K=5, validate using Silhouette Score ≥ 0.45. Feed cluster labels into the email platform as audience segments. Re-cluster monthly as behaviour evolves.
+      </p>
+    </div>
+  </div>
+
+  <div class="app-card fade-up">
+    <div class="app-num">02</div>
+    <div class="app-label">Application · Data Quality</div>
+    <h3>Detecting Anomalous Entries in a Parts / SKU Database</h3>
+    <p>
+      A manufacturing company's internal parts database contains 50,000 SKUs with inconsistently formatted names: "Bolt M8×30 SS", "M8 × 30mm Stainless Bolt", "stainless_bolt_8mm_30", "BOLT-SS-M8-30". This causes duplicate orders, incorrect inventory counts, and sourcing errors worth tens of thousands of euros per quarter.
+    </p>
+    <p>
+      K-Means on character-level TF-IDF embeddings of the SKU names clusters visually similar strings together. Cluster centroids represent the "canonical" format. Items far from their centroid are outlier descriptions of likely-duplicate items — flagged for a human review queue. This shrinks the manual review burden from 50,000 entries to ~1,200 flagged anomalies.
+    </p>
+    <div class="spec-box">
+      <p>
+        Specific implementation: vectorise SKU names with TF-IDF (character 3-grams). Apply K-Means with K estimated from product taxonomy (~800 part families). Points in the 95th percentile of distance-to-centroid are flagged. Cross-reference against existing Levenshtein matching for confirmation.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ─── ONE-PAGER CHEAT SHEET ─── -->
+<section>
+  <div class="sec-label"><span class="num">07</span> Reference Cheat Sheet</div>
+  <h2>One-pager to keep.</h2>
+
+  <div id="onepager" class="fade-up">
+    <div class="onepager-header">
+      <div>
+        <h3>Algorithm Cheat Sheet</h3>
+        <p>K-Means Clustering</p>
+      </div>
+      <div style="font-family:var(--mono); font-size:11px; color:var(--muted); text-align:right; line-height:1.8;">
+        Lloyd (1957)<br/>
+        Complexity: O(n·k·d·i)<br/>
+        Type: Unsupervised ML
+      </div>
+    </div>
+    <div class="onepager-grid">
+      <div class="onepager-cell">
+        <div class="oc-label">Core Idea</div>
+        <p>Partition N points into K clusters by iteratively assigning each point to its nearest centroid, then recomputing centroids as the mean of assigned points. Stop when assignments no longer change.</p>
+        <br/>
+        <div class="oc-label">The Four Steps</div>
+        <ul>
+          <li>Initialise K centroids (randomly or K-Means++)</li>
+          <li>Assign each point to nearest centroid</li>
+          <li>Move centroid to mean of its group</li>
+          <li>Repeat until convergence</li>
+        </ul>
+      </div>
+      <div class="onepager-cell">
+        <div class="oc-label">Mini Example (K=2)</div>
+        <p style="font-family:var(--mono); font-size:11px; line-height:2; color:#7aaa90;">
+          Points: A(1,2) B(2,1) C(8,8) D(9,9)<br/>
+          Init: C1=(1,2) C2=(9,9)<br/>
+          Assign: {A,B}→C1, {C,D}→C2<br/>
+          Update: C1=(1.5,1.5) C2=(8.5,8.5)<br/>
+          Re-assign: unchanged → <strong style="color:var(--teal);">converged ✓</strong>
+        </p>
+        <br/>
+        <div class="oc-label">Objective (minimise)</div>
+        <p style="font-family:var(--mono); font-size:13px; color:var(--teal);">J = Σₖ Σᵢ∈Cₖ ‖xᵢ − μₖ‖²</p>
+      </div>
+      <div class="onepager-cell">
+        <div class="oc-label">When to use</div>
+        <ul>
+          <li>Customer segmentation</li>
+          <li>Image colour quantisation</li>
+          <li>Document clustering</li>
+          <li>Anomaly detection</li>
+          <li>Feature engineering</li>
+        </ul>
+        <br/>
+        <div class="oc-label">When NOT to use</div>
+        <ul>
+          <li>Non-spherical clusters</li>
+          <li>Unknown / variable K</li>
+          <li>Many outliers present</li>
+          <li>Very high dimensions</li>
+        </ul>
+      </div>
+    </div>
+    <div style="padding:16px 28px; border-top:1px solid var(--border); display:flex; gap:32px; flex-wrap:wrap;">
+      <div>
+        <span style="font-family:var(--mono);font-size:9px;letter-spacing:0.2em;text-transform:uppercase;color:var(--muted);">Better alternatives for edge cases</span><br/>
+        <span style="font-size:13px;color:var(--muted);">K-Means++ · K-Medoids · DBSCAN · Gaussian Mixture Models · Hierarchical Clustering</span>
+      </div>
+      <div style="margin-left:auto;">
+        <span style="font-family:var(--mono);font-size:9px;letter-spacing:0.2em;text-transform:uppercase;color:var(--muted);">Choose K using</span><br/>
+        <span style="font-size:13px;color:var(--muted);">Elbow Method · Silhouette Score · Gap Statistic · BIC / AIC</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── REFERENCES ─── -->
+<section>
+  <div class="sec-label"><span class="num">08</span> Sources & Reading</div>
+  <h2>Go deeper.</h2>
+  <ul class="ref-list fade-up">
+    <li>Lloyd, S.P. (1982). "Least Squares Quantization in PCM." <em>IEEE Transactions on Information Theory.</em></li>
+    <li>Arthur, D. & Vassilvitskii, S. (2007). "k-means++: The Advantages of Careful Seeding." <a href="https://theory.stanford.edu/~sergei/papers/kMeansPP-soda.pdf" target="_blank">Stanford — kMeansPP-soda.pdf</a></li>
+    <li>Wikipedia. <a href="https://en.wikipedia.org/wiki/K-means_clustering" target="_blank">K-Means Clustering</a></li>
+    <li>Cornell Course Notes. <a href="https://cs.cornell.edu/courses/cs4780/2022sp/notes/LectureNotes04.html" target="_blank">cs.cornell.edu — Lecture Notes 04</a></li>
+    <li>Scikit-Learn Docs. <a href="https://scikit-learn.org/stable/modules/clustering.html#k-means" target="_blank">sklearn.cluster.KMeans</a></li>
+  </ul>
+</section>
+
+<!-- ─── FOOTER ─── -->
+<footer>
+  K-Means Clustering · Algorithm Deep Dive · Student Presentation ·
+  Built as a static site · <a href="https://github.com" target="_blank">Host on GitHub Pages</a>
+</footer>
+
+<!-- ══════════════════════════════════════════════ JAVASCRIPT ══════════════════════════════════════════════ -->
+<script>
+// ──────────────────────────────────────
+//  SCROLL ANIMATIONS
+// ──────────────────────────────────────
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
+}, { threshold: 0.1, rootMargin: '0px 0px -60px 0px' });
+document.querySelectorAll('.fade-up').forEach(el => observer.observe(el));
+
+
+// ──────────────────────────────────────
+//  STEP-BY-STEP WALKTHROUGH DATA
+// ──────────────────────────────────────
+const wines = [
+  { name:'A', x:1, y:2, label:'Light', color: null },
+  { name:'B', x:2, y:1, label:'Light', color: null },
+  { name:'C', x:4, y:5, label:'Light', color: null },
+  { name:'D', x:5, y:4, label:'Light', color: null },
+  { name:'E', x:8, y:8, label:'Bold',  color: null },
+  { name:'F', x:9, y:9, label:'Bold',  color: null },
+];
+
+const C1_COLOR = '#4facfe';
+const C2_COLOR = '#ff6b6b';
+
+const steps = [
+  {
+    num: '0 / 4', title: 'Dataset Overview',
+    text: 'Six wines, two dimensions: acidity (x) and alcohol % (y). We will run K-Means with K=2. No labels exist — the algorithm must discover the grouping.',
+    centroids: null,
+    assignments: [null, null, null, null, null, null],
+  },
+  {
+    num: '1 / 4', title: 'Initialise: place 2 centroids randomly',
+    text: 'We randomly assign C1=(1,2) and C2=(9,9) as starting centroids. These are poor starting points — but the algorithm will correct itself.',
+    centroids: [{x:1,y:2}, {x:9,y:9}],
+    assignments: [null, null, null, null, null, null],
+  },
+  {
+    num: '2 / 4', title: 'Assign each wine to nearest centroid',
+    text: 'A(1,2)→C1, B(2,1)→C1, C(4,5)→C1, D(5,4)→C1 — all closer to C1=(1,2). E(8,8)→C2, F(9,9)→C2 — closer to C2=(9,9). First assignment done.',
+    centroids: [{x:1,y:2}, {x:9,y:9}],
+    assignments: [0, 0, 0, 0, 1, 1],
+  },
+  {
+    num: '3 / 4', title: 'Update: move centroids to group means',
+    text: 'C1 = mean of {A,B,C,D} = ((1+2+4+5)/4, (2+1+5+4)/4) = (3, 3). C2 = mean of {E,F} = ((8+9)/2, (8+9)/2) = (8.5, 8.5). Centroids relocated.',
+    centroids: [{x:3,y:3}, {x:8.5,y:8.5}],
+    assignments: [0, 0, 0, 0, 1, 1],
+  },
+  {
+    num: '4 / 4', title: 'Re-assign — no change. Converged! ✓',
+    text: 'With C1=(3,3) and C2=(8.5,8.5): A,B,C,D still closest to C1; E,F still closest to C2. Nothing changed → algorithm terminates. Cluster 1 = light wines (serve with fish). Cluster 2 = bold wines (serve with steak).',
+    centroids: [{x:3,y:3}, {x:8.5,y:8.5}],
+    assignments: [0, 0, 0, 0, 1, 1],
+  },
+];
+
+let currentStep = 0;
+
+function renderWineGrid(step) {
+  const grid = document.getElementById('wineGrid');
+  grid.innerHTML = wines.map((w, i) => {
+    const a = step.assignments[i];
+    let bg = 'var(--surface2)';
+    let border = 'var(--border)';
+    let clusterText = '?';
+    let clusterBg = 'rgba(255,255,255,0.05)';
+    let clusterColor = 'var(--muted)';
+    if (a === 0) {
+      bg = 'rgba(79,172,254,0.08)'; border = 'rgba(79,172,254,0.4)';
+      clusterText = 'C1'; clusterBg = 'rgba(79,172,254,0.2)'; clusterColor = C1_COLOR;
+    } else if (a === 1) {
+      bg = 'rgba(255,107,107,0.08)'; border = 'rgba(255,107,107,0.4)';
+      clusterText = 'C2'; clusterBg = 'rgba(255,107,107,0.2)'; clusterColor = C2_COLOR;
+    }
+    return `<div class="wine-dot-card" style="background:${bg}; border-color:${border};">
+      <div class="wine-name" style="color:${a===0?C1_COLOR:a===1?C2_COLOR:'var(--muted)'}">${w.name}</div>
+      <div class="wine-coord">(${w.x}, ${w.y})</div>
+      <div class="wine-cluster" style="background:${clusterBg}; color:${clusterColor};">${clusterText}</div>
+    </div>`;
+  }).join('');
+}
+
+function renderCentroids(step) {
+  const row = document.getElementById('centroidRow');
+  if (!step.centroids) {
+    row.innerHTML = `
+      <div class="centroid-pill" style="background:rgba(79,172,254,0.1);border:1px solid rgba(79,172,254,0.2);color:#4facfe;">C1 = (–, –)</div>
+      <div class="centroid-pill" style="background:rgba(255,107,107,0.1);border:1px solid rgba(255,107,107,0.2);color:var(--rose);">C2 = (–, –)</div>`;
+    return;
+  }
+  const c1 = step.centroids[0], c2 = step.centroids[1];
+  row.innerHTML = `
+    <div class="centroid-pill" style="background:rgba(79,172,254,0.15);border:1px solid rgba(79,172,254,0.4);color:#4facfe;">★ C1 = (${c1.x}, ${c1.y})</div>
+    <div class="centroid-pill" style="background:rgba(255,107,107,0.15);border:1px solid rgba(255,107,107,0.4);color:var(--rose);">★ C2 = (${c2.x}, ${c2.y})</div>`;
+}
+
+function renderNarrative(step) {
+  const el = document.getElementById('stepNarrative');
+  el.innerHTML = `<div class="step-num">STEP ${step.num}</div><h4>${step.title}</h4><p>${step.text}</p>`;
+}
+
+function renderWalkCanvas(step) {
+  const canvas = document.getElementById('walkCanvas');
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  ctx.clearRect(0, 0, W, H);
+
+  const PAD = 50;
+  const maxX = 10, maxY = 10;
+  const toX = v => PAD + (v / maxX) * (W - PAD * 2);
+  const toY = v => H - PAD - (v / maxY) * (H - PAD * 2);
+
+  // Grid lines
+  ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+  ctx.lineWidth = 1;
+  for (let i = 0; i <= 10; i++) {
+    ctx.beginPath(); ctx.moveTo(toX(i), PAD); ctx.lineTo(toX(i), H - PAD); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(PAD, toY(i)); ctx.lineTo(W - PAD, toY(i)); ctx.stroke();
+  }
+
+  // Axis labels
+  ctx.fillStyle = '#4a5568'; ctx.font = '11px JetBrains Mono, monospace'; ctx.textAlign = 'center';
+  for (let i = 0; i <= 10; i += 2) {
+    ctx.fillText(i, toX(i), H - 18);
+    ctx.textAlign = 'right'; ctx.fillText(i, PAD - 8, toY(i) + 4); ctx.textAlign = 'center';
+  }
+  ctx.fillStyle = '#6b7f9a';
+  ctx.fillText('Acidity →', W / 2, H - 4);
+  ctx.save(); ctx.translate(14, H/2); ctx.rotate(-Math.PI/2);
+  ctx.fillText('Alcohol %', 0, 0); ctx.restore();
+
+  // Voronoi shading
+  if (step.centroids) {
+    for (let px = 0; px < W; px += 4) {
+      for (let py = 0; py < H; py += 4) {
+        const dx = (px - PAD) / (W - PAD*2) * maxX;
+        const dy = (H - PAD - py) / (H - PAD*2) * maxY;
+        const d0 = Math.hypot(dx - step.centroids[0].x, dy - step.centroids[0].y);
+        const d1 = Math.hypot(dx - step.centroids[1].x, dy - step.centroids[1].y);
+        ctx.fillStyle = d0 < d1 ? 'rgba(79,172,254,0.04)' : 'rgba(255,107,107,0.04)';
+        ctx.fillRect(px, py, 4, 4);
+      }
+    }
+  }
+
+  // Wine points
+  wines.forEach((w, i) => {
+    const a = step.assignments[i];
+    const cx = toX(w.x), cy = toY(w.y);
+    ctx.beginPath(); ctx.arc(cx, cy, 10, 0, Math.PI * 2);
+    ctx.fillStyle = a === 0 ? 'rgba(79,172,254,0.9)' : a === 1 ? 'rgba(255,107,107,0.9)' : 'rgba(255,255,255,0.3)';
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.2)'; ctx.lineWidth = 1.5; ctx.stroke();
+    ctx.fillStyle = 'white'; ctx.font = 'bold 11px Syne, sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText(w.name, cx, cy + 4);
+  });
+
+  // Centroids
+  if (step.centroids) {
+    step.centroids.forEach((c, k) => {
+      const cx = toX(c.x), cy = toY(c.y);
+      const color = k === 0 ? C1_COLOR : C2_COLOR;
+      ctx.beginPath(); ctx.arc(cx, cy, 14, 0, Math.PI * 2);
+      ctx.fillStyle = color + '30'; ctx.fill();
+      ctx.strokeStyle = color; ctx.lineWidth = 2.5; ctx.stroke();
+      ctx.fillStyle = color; ctx.font = 'bold 14px Syne'; ctx.textAlign = 'center';
+      ctx.fillText('★', cx, cy + 5);
+
+      ctx.fillStyle = color; ctx.font = '10px JetBrains Mono'; ctx.textAlign = 'left';
+      ctx.fillText(`C${k+1}(${c.x},${c.y})`, cx + 16, cy - 4);
+    });
+  }
+}
+
+function renderStep(idx) {
+  const step = steps[idx];
+  renderWineGrid(step);
+  renderCentroids(step);
+  renderNarrative(step);
+  renderWalkCanvas(step);
+  document.getElementById('stepIndicator').textContent = `Step ${idx} / ${steps.length - 1}`;
+  document.getElementById('prevBtn').disabled = idx === 0;
+  document.getElementById('nextBtn').disabled = idx === steps.length - 1;
+}
+
+function nextStep() { if (currentStep < steps.length - 1) { currentStep++; renderStep(currentStep); } }
+function prevStep() { if (currentStep > 0) { currentStep--; renderStep(currentStep); } }
+function resetSteps() { currentStep = 0; renderStep(0); }
+
+// Init walkthrough
+renderStep(0);
+
+
+// ──────────────────────────────────────
+//  MAIN K-MEANS DEMO (Section 04)
+// ──────────────────────────────────────
+const mainCanvas = document.getElementById('mainCanvas');
+const mCtx = mainCanvas.getContext('2d');
+const MW = mainCanvas.width, MH = mainCanvas.height;
+const KM_K = 3;
+const KM_COLORS = ['#4facfe', '#f093fb', '#00e5c0'];
+
+let kmPoints = [], kmCentroids = [], kmAssignments = [];
+let kmPhase = 'assign';
+let kmAutoTimer = null;
+let kmIteration = 0;
+
+function dist2(a, b) { return (a.x-b.x)**2 + (a.y-b.y)**2; }
+
+function kmGenPoints(n) {
+  const pts = [];
+  const seeds = [
+    {x: MW*0.2, y: MH*0.25},
+    {x: MW*0.7, y: MH*0.2},
+    {x: MW*0.5, y: MH*0.72},
+  ];
+  for (let k = 0; k < KM_K; k++) {
+    const count = Math.floor(n / KM_K) + (k < n % KM_K ? 1 : 0);
+    for (let i = 0; i < count; i++) {
+      pts.push({
+        x: seeds[k].x + (Math.random() - 0.5) * MW * 0.32,
+        y: seeds[k].y + (Math.random() - 0.5) * MH * 0.32,
+      });
+    }
+  }
+  return pts.map(p => ({
+    x: Math.max(20, Math.min(MW - 20, p.x)),
+    y: Math.max(20, Math.min(MH - 20, p.y)),
+  }));
+}
+
+function kmInitCentroids() {
+  return Array.from({length: KM_K}, () => ({
+    x: 80 + Math.random() * (MW - 160),
+    y: 80 + Math.random() * (MH - 160),
+  }));
+}
+
+function kmAssign() {
+  let changed = false;
+  const newA = kmPoints.map((p, i) => {
+    let best = 0, bd = Infinity;
+    kmCentroids.forEach((c, k) => { const d = dist2(p, c); if (d < bd) { bd = d; best = k; } });
+    if (best !== kmAssignments[i]) changed = true;
+    return best;
+  });
+  kmAssignments = newA;
+  return changed;
+}
+
+function kmMove() {
+  const old = kmCentroids.map(c => ({...c}));
+  kmCentroids = kmCentroids.map((_, k) => {
+    const grp = kmPoints.filter((_, i) => kmAssignments[i] === k);
+    if (!grp.length) return kmCentroids[k];
+    return { x: grp.reduce((s,p)=>s+p.x,0)/grp.length, y: grp.reduce((s,p)=>s+p.y,0)/grp.length };
+  });
+  return old;
+}
+
+function kmDraw(oldCentroids) {
+  mCtx.clearRect(0, 0, MW, MH);
+
+  // Grid
+  mCtx.strokeStyle = 'rgba(255,255,255,0.03)'; mCtx.lineWidth = 1;
+  for (let x = 0; x < MW; x += 40) { mCtx.beginPath(); mCtx.moveTo(x,0); mCtx.lineTo(x,MH); mCtx.stroke(); }
+  for (let y = 0; y < MH; y += 40) { mCtx.beginPath(); mCtx.moveTo(0,y); mCtx.lineTo(MW,y); mCtx.stroke(); }
+
+  // Voronoi soft zones
+  for (let px = 0; px < MW; px += 6) {
+    for (let py = 0; py < MH; py += 6) {
+      let best = 0, bd = Infinity;
+      kmCentroids.forEach((c, k) => { const d = dist2({x:px,y:py}, c); if (d < bd) { bd = d; best = k; } });
+      mCtx.fillStyle = KM_COLORS[best] + '10';
+      mCtx.fillRect(px, py, 6, 6);
+    }
+  }
+
+  // Motion trails (old centroids)
+  if (oldCentroids) {
+    oldCentroids.forEach((oc, k) => {
+      const nc = kmCentroids[k];
+      mCtx.beginPath(); mCtx.moveTo(oc.x, oc.y); mCtx.lineTo(nc.x, nc.y);
+      mCtx.strokeStyle = KM_COLORS[k]; mCtx.lineWidth = 2; mCtx.setLineDash([5,5]); mCtx.stroke(); mCtx.setLineDash([]);
+    });
+  }
+
+  // Points
+  kmPoints.forEach((p, i) => {
+    const k = kmAssignments[i];
+    mCtx.beginPath(); mCtx.arc(p.x, p.y, 5, 0, Math.PI*2);
+    mCtx.fillStyle = k !== undefined ? KM_COLORS[k] + 'cc' : 'rgba(255,255,255,0.25)';
+    mCtx.fill();
+    mCtx.strokeStyle = 'rgba(255,255,255,0.15)'; mCtx.lineWidth = 1; mCtx.stroke();
+  });
+
+  // Centroids
+  kmCentroids.forEach((c, k) => {
+    mCtx.beginPath(); mCtx.arc(c.x, c.y, 16, 0, Math.PI*2);
+    mCtx.fillStyle = KM_COLORS[k] + '25'; mCtx.fill();
+    mCtx.strokeStyle = KM_COLORS[k]; mCtx.lineWidth = 2.5; mCtx.stroke();
+    mCtx.fillStyle = KM_COLORS[k]; mCtx.font = 'bold 15px Syne, sans-serif';
+    mCtx.textAlign = 'center'; mCtx.textBaseline = 'middle';
+    mCtx.fillText('★', c.x, c.y);
+  });
+}
+
+function setStatus(msg) { document.getElementById('kmStatusText').textContent = msg; }
+
+function kmStep() {
+  if (kmPhase === 'assign') {
+    const changed = kmAssign();
+    kmDraw();
+    if (!changed && kmIteration > 0) {
+      kmPhase = 'done';
+      setStatus('✅ Converged — no point changed cluster. K-Means complete!');
+      stopAuto(); return;
+    }
+    kmPhase = 'move';
+    setStatus(`Iteration ${++kmIteration}: points assigned. Now relocating centroids…`);
+  } else if (kmPhase === 'move') {
+    const old = kmMove();
+    kmDraw(old);
+    kmPhase = 'assign';
+    setStatus(`Centroids moved to group means. Re-assigning points…`);
+  } else {
+    setStatus('Already converged. Press ↺ New Dataset to restart.');
+  }
+}
+
+function kmAuto() {
+  if (kmAutoTimer) { stopAuto(); return; }
+  document.getElementById('kmAutoBtn').textContent = 'Pause ⏸';
+  kmAutoTimer = setInterval(() => {
+    kmStep();
+    if (kmPhase === 'done') stopAuto();
+  }, 800);
+}
+
+function stopAuto() {
+  clearInterval(kmAutoTimer); kmAutoTimer = null;
+  document.getElementById('kmAutoBtn').textContent = 'Auto-run ▶';
+}
+
+function kmReset() {
+  stopAuto();
+  kmPoints = kmGenPoints(72);
+  kmCentroids = kmInitCentroids();
+  kmAssignments = new Array(kmPoints.length).fill(undefined);
+  kmPhase = 'assign';
+  kmIteration = 0;
+  kmDraw();
+  setStatus('Dataset generated. Press Step or Auto-run to begin.');
+}
+
+kmReset();
+
+
+// ──────────────────────────────────────
+//  FULLSCREEN
+// ──────────────────────────────────────
+const ICON_ENTER = `<polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/>`;
+const ICON_EXIT  = `<polyline points="4 14 4 20 10 20"/><polyline points="20 10 20 4 14 4"/><line x1="4" y1="20" x2="11" y2="13"/><line x1="20" y1="4" x2="13" y2="11"/>`;
+
+function toggleFullscreen() {
+  if (!document.fullscreenElement) {
+    document.documentElement.requestFullscreen();
+  } else {
+    document.exitFullscreen();
+  }
+}
+
+document.addEventListener('fullscreenchange', () => {
+  const btn  = document.getElementById('fsBtn');
+  const icon = document.getElementById('fsIcon');
+  if (document.fullscreenElement) {
+    icon.innerHTML = ICON_EXIT;
+    btn.title = 'Exit fullscreen (Esc)';
+    document.getElementById('fsLabel').textContent = 'Exit';
+  } else {
+    icon.innerHTML = ICON_ENTER;
+    btn.title = 'Toggle fullscreen (F)';
+    document.getElementById('fsLabel').textContent = 'Fullscreen';
+  }
+});
+
+// Press F to toggle fullscreen (when not typing in an input)
+document.addEventListener('keydown', e => {
+  if (e.key === 'f' && !e.ctrlKey && !e.metaKey && document.activeElement.tagName !== 'INPUT') {
+    toggleFullscreen();
+  }
+});
+</script>
+</body>
+</html>
